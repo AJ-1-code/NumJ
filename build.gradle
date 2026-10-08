@@ -1,0 +1,46 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.numj'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'local'
+            url = layout.buildDirectory.dir('repositories')
+        }
+    }
+}
+
+tasks.register('runNumJTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the NumJ test suite.'
+
+    dependsOn testClasses
+
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'numj.NumJTest'
+}
+
+tasks.named('test') {
+    failOnNoDiscoveredTests = false
+}
