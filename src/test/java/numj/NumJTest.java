@@ -1,5 +1,7 @@
 package numj;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 public class NumJTest {
@@ -857,6 +859,14 @@ public class NumJTest {
         check(c.tile(0).size() == 0 && c.tile().equals(c), "tile(0) is empty, tile() copies");
         checkThrows(() -> c.tile(-1), "tile negative");
 
+        check(arrayEquals(NumJArray.of(1, 2, 3).pad(new int[][]{{1, 2}}), 0, 1, 2, 3, 0, 0), "pad 1D");
+        check(Arrays.equals(c.pad(new int[][]{{1, 0}, {2, 1}}).shape(), new int[]{3, 6}) && arrayEquals(c.pad(new int[][]{{1, 0}, {2, 1}}), 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 4, 5, 6, 0), "pad 2D asymmetric");
+        check(Arrays.equals(ct.pad(new int[][]{{0, 0}, {1, 0}}).shape(), new int[]{3, 3}) && arrayEquals(ct.pad(new int[][]{{0, 0}, {1, 0}}), 0, 1, 4, 0, 2, 5, 0, 3, 6), "pad transposed view");
+        check(arrayEquals(NumJArray.of(1, 2, 3).pad(new int[][]{{0, 0}}), 1, 2, 3), "pad zero padding");
+        checkThrows(() -> NumJArray.of(1, 2, 3).pad(new int[][]{{1}}), "pad invalid padding pair");
+        checkThrows(() -> NumJArray.of(1, 2, 3).pad(new int[][]{{-1, 0}}), "pad negative padding");
+        checkThrows(() -> NumJArray.of(1, 2, 3).pad(new int[][]{{0, 0}, {0, 0}}), "pad dimension mismatch");
+
         check(arrayEquals(NumJArray.of(1, 2, 3).flip(), 3, 2, 1), "flip 1D");
         check(arrayEquals(c.flip(), 6, 5, 4, 3, 2, 1), "flip all axes");
         check(arrayEquals(c.flip(0), 4, 5, 6, 1, 2, 3) && arrayEquals(c.flip(1), 3, 2, 1, 6, 5, 4), "flip single axis");
@@ -962,7 +972,36 @@ public class NumJTest {
         check(arrayEquals(ct.maximum(3), 3, 4, 3, 5, 3, 6), "maximum on view");
         checkThrows(() -> c.maximum(NumJArray.of(1, 2)), "maximum with bad shape");
 
+        try {
+            Path njFile = Files.createTempFile("numj-test", ".nj");
+            Path npyFile = Files.createTempFile("numj-test", ".npy");
+        
+            try {
+                NumJArray original = NumJArray.of(1, 2, 3, 4, 5, 6).reshape(2, 3);
+                original.save(njFile.toString());
+                NumJArray loaded = NumJArray.load(njFile.toString());
+                check(Arrays.equals(loaded.shape(), new int[]{2, 3}) && arrayEquals(loaded, 1, 2, 3, 4, 5, 6),"save/load NJ");
+                NumJArray replacement = NumJArray.of(7, 8, 9);
+                replacement.save(njFile.toString());
+                NumJArray overwritten = NumJArray.load(njFile.toString());
+                check(Arrays.equals(overwritten.shape(), new int[]{3}) && arrayEquals(overwritten, 7, 8, 9),"save overwrites NJ");
+                // NPY — SHOULD WORK, BUT HAVEN'T FULLY TESTED
+                original.saveNpy(npyFile.toString());
+                NumJArray loadedNpy = NumJArray.loadNpy(npyFile.toString());
+                check(Arrays.equals(loadedNpy.shape(), new int[]{2, 3}) && arrayEquals(loadedNpy, 1, 2, 3, 4, 5, 6),"saveNpy/loadNpy");
+                NumJArray replacementNpy = NumJArray.of(9, 8, 7);
+                replacementNpy.saveNpy(npyFile.toString());
+                NumJArray overwrittenNpy = NumJArray.loadNpy(npyFile.toString());
+                check(Arrays.equals(overwrittenNpy.shape(), new int[]{3}) && arrayEquals(overwrittenNpy, 9, 8, 7),"saveNpy overwrites NPY");
+                checkThrows(() -> original.save("invalid.txt"),"save invalid extension");
+                checkThrows(() -> NumJArray.load("invalid.txt"),"load invalid extension");
+                checkThrows(() -> original.saveNpy("invalid.txt"),"saveNpy invalid extension");
+                checkThrows(() -> NumJArray.loadNpy("invalid.txt"),"loadNpy invalid extension");
+            } finally {Files.deleteIfExists(njFile); Files.deleteIfExists(npyFile);}
+        } catch (java.io.IOException e1) {throw new RuntimeException("Save/load tests failed", e1);}
+
         System.out.println("All tests passed!");
+
     }
 
     public static void check(boolean condition, String name) {
