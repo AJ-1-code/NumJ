@@ -20,8 +20,11 @@ publishing {
     publications {
         maven(MavenPublication) {
             from components.java
-        }
+            groupId = 'com.numj'
+            artifactId = 'NumJ'
+            version = '1.0.0'
     }
+}
 
     repositories {
         maven {
@@ -30,6 +33,7 @@ publishing {
         }
     }
 }
+
 
 tasks.register('runNumJTest', JavaExec) {
     group = 'verification'
