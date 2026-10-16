@@ -1,23 +1,30 @@
-# NumJ 
+# NumJ
 
 [![](https://jitpack.io/v/AJ-1-code/NumJ.svg)](https://jitpack.io/#AJ-1-code/NumJ)
 
-**NumJ** is a high-performance, feature-complete, monolithic linear algebra and tensor engine built natively in pure Java. Designed specifically for artificial intelligence and deep learning workflows, NumJ brings Python's NumPy-style multi-dimensional array capabilities, stride manipulation, and broadcasting mechanics straight into the Java Virtual Machine ecosystem—with **zero overhead**.
+**NumJ** is a high-performance, feature-rich multidimensional array and linear algebra library built entirely in pure Java. Designed with artificial intelligence and deep learning workflows in mind, NumJ brings NumPy-inspired multidimensional array capabilities, stride-based views, and broadcasting directly to the Java Virtual Machine.
+
+With support for efficient array transformations, in-place arithmetic, and optimized matrix operations, NumJ provides the mathematical building blocks for numerical computing and neural network development in Java.
 
 ---
 
 ## Key Architectural Highlights
 
-*   **Zero-Allocation Virtual Views:** Core operations like `transpose()`, `reshape()`, `expandDims()`, and `broadcastTo()` mutate array metadata (strides and offsets) natively. They create lightweight virtual views over raw data without duplicating the underlying memory arrays.
-*   **Surgical Mutation Control:** Includes a full in-place mutating API (`addi()`, `subi()`, `muli()`, `divi()`, `reluInPlace()`) allowing developers to tightly optimize complex layer transitions and eliminate intermediate memory thrashing.
-*   **Cache-Conscious Matrix Operations:** Employs an optimized `i -> kk -> j` stride reordering pattern for matrix multiplication (`matMul`). This guarantees data is accessed in contiguous layout blocks, maximizing L1/L2 hardware CPU cache hits.
-*   **NumPy Ecosystem Interoperability:** Features native binary parsing via `saveNpy()` and `loadNpy()`, allowing seamless weight file transfers directly between Python environments and your Java backend application.
+*   **Zero-Copy Virtual Views:** Operations like `transpose()`, `reshape()`, `expandDims()`, and `broadcastTo()` can represent compatible transformations through array metadata, including strides and offsets, without copying the underlying numerical data. This enables efficient manipulation of array layouts while avoiding unnecessary data duplication.
+
+*   **In-Place Mutation Control:** Includes an in-place API (`addi()`, `subi()`, `muli()`, `divi()`, `reluInPlace()`) that allows developers to modify existing arrays directly. These operations can reduce intermediate allocations and memory traffic, providing greater control over memory usage in numerical computing and neural network workflows.
+
+*   **Cache-Conscious Matrix Operations:** Uses an optimized `i -> kk -> j` loop ordering for matrix multiplication (`matMul`). For conventional row-major matrices, this improves memory access locality by traversing rows of the right-hand operand and output matrix sequentially, helping make better use of CPU caches.
+
+*   **NumPy Interoperability:** Supports NumPy's NPY binary array format through `saveNpy()` and `loadNpy()`, allowing numerical array data to be exchanged between Python and Java applications for tasks such as transferring neural network weights.
 
 ---
 
 ## Deep Neural Network Benchmark
 
-NumJ is engineered to eliminate the biggest flaw in Java math engines: Garbage Collector overhead. The following benchmark runs a massive **76.55 Million Parameter Deep Network** (`16,384 -> 4,096 -> 2,048 -> 512 -> 10`) across 20 iterations using single-threaded sequential execution:
+NumJ is designed to support memory-efficient neural network inference through its array operations and in-place mutation capabilities.
+
+The following benchmark evaluates a **76.55 Million Parameter Deep Network** (`16,384 -> 4,096 -> 2,048 -> 512 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
 
 ```text
 Initializing network...
@@ -35,13 +42,15 @@ Inferences Per Second  : 17.38
 GC Collections Timing  : 0
 GC Time Spent Timing   : 0 ms
 ```
-*NumJ maintains a flawless **0ms Garbage Collection footprint** under heavy arithmetic load due to its strict zero-allocation memory footprint strategy.*
+
+*No garbage collection activity was observed during the timed inference iterations. This indicates that the benchmark workload did not trigger garbage collection during the measurement window, although it does not imply that every NumJ operation is allocation-free.*
 
 ---
 
 ## Installation
 
 ### 1. Configure Repository Settings
+
 Add the **JitPack** repository block inside your root `settings.gradle` file:
 
 ```groovy
@@ -55,7 +64,8 @@ dependencyResolutionManagement {
 ```
 
 ### 2. Add Project Dependency
-Add the core library line straight into the `dependencies` block of your `build.gradle` file:
+
+Add the NumJ dependency directly inside the `dependencies` block of your `build.gradle` file:
 
 ```groovy
 dependencies {
@@ -65,7 +75,7 @@ dependencies {
 
 ---
 
-## AI Usage Exampel
+## AI Usage Example
 
 ```java
 package test;
@@ -74,15 +84,20 @@ import numj.NumJArray;
 
 public class Main {
     public static void main(String[] args) {
-        // Fluent chain layer sequence mimicking modern tensor frameworks
+        // Create a batch containing 16,384 input features
         NumJArray input = NumJArray.arange(0, 16384).reshape(1, 16384);
+
+        // Initialize weights and biases for a dense layer
         NumJArray weights = NumJArray.normal(16384, 4096);
         NumJArray bias = NumJArray.zeros(1, 4096);
 
-        // Compute forward layer smoothly with zero-allocation mechanics
+        // Compute a dense layer with ReLU activation
         NumJArray layerOutput = input.matMul(weights).add(bias).relu();
-        
-        System.out.println("Layer Output Shape: " + java.util.Arrays.toString(layerOutput.shape()));
+
+        System.out.println(
+            "Layer Output Shape: " +
+            java.util.Arrays.toString(layerOutput.shape())
+        );
     }
 }
 ```
@@ -91,7 +106,7 @@ public class Main {
 
 ## Comprehensive API Inventory
 
-NumJ includes hundreds of production-ready mathematical primitives mapping directly to Python's linear algebra footprint:
+NumJ provides a broad collection of multidimensional array operations, mathematical functions, reductions, and neural network activation functions for numerical computing in Java.
 
 <details>
 <summary><b>Click to expand full method index</b></summary>
@@ -122,4 +137,3 @@ NumJ includes hundreds of production-ready mathematical primitives mapping direc
 *   Logical Matching: `equal()`, `notEqual()`, `greater()`, `greaterEqual()`, `less()`, `lessEqual()`, `logicalAnd()`, `logicalOr()`, `logicalXor()`, `logicalNot()`, `all()`, `any()`, `isClose()`, `allClose()`, `isNaN()`, `isInf()`, `isFinite()`
 
 </details>
-
