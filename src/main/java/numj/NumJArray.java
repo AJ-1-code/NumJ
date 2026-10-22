@@ -20,14 +20,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.function.BiFunction;
-import java.util.function.DoubleBinaryOperator;
-import java.util.function.DoublePredicate;
-import java.util.function.DoubleUnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * A small, NumPy-style N-dimensional array of {@code double}s.
+ * A small, NumPy-style N-dimensional array of {@code float}s.
  * 
  *   {@code data}    - the flat backing array
  *   {@code shape}   - the size of each dimension
@@ -43,7 +40,7 @@ import java.util.regex.Pattern;
 public class NumJArray {
 
     /** Flat backing storage. Shared between this array and any views made from it. */
-    public final double[] data;
+    public final float[] data;
 
     /** Size of each dimension. Do not modify; use {@link #shape()} for a safe copy. */
     public final int[] shape;
@@ -64,7 +61,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code data} or {@code shape} is null, a dimension is
      *                                  negative, or {@code data.length} does not match the shape
      */
-    public NumJArray(double[] data, int[] shape) {
+    public NumJArray(float[] data, int[] shape) {
         this(requireLength(data, shape), shape, createStrides(shape), 0);
     }
 
@@ -76,7 +73,7 @@ public class NumJArray {
      * @param strides the stride of each dimension; must have the same length as {@code shape}
      * @throws IllegalArgumentException if the arguments are inconsistent or would read outside {@code data}
      */
-    public NumJArray(double[] data, int[] shape, int[] strides) {
+    public NumJArray(float[] data, int[] shape, int[] strides) {
         this(data, shape, strides, 0);
     }
 
@@ -91,7 +88,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the arguments are inconsistent or any element
      *                                  would lie outside {@code data}
      */
-    public NumJArray(double[] data, int[] shape, int[] strides, int offset) {
+    public NumJArray(float[] data, int[] shape, int[] strides, int offset) {
         if (data == null) {
             throw new IllegalArgumentException("data must not be null");
         }
@@ -128,7 +125,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the shape is invalid
      */
     public static NumJArray zeros(int... shape) {
-        return new NumJArray(new double[sizeOf(checkShape(shape))], shape);
+        return new NumJArray(new float[sizeOf(checkShape(shape))], shape);
     }
 
     /**
@@ -139,7 +136,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the shape is invalid
      */
     public static NumJArray ones(int... shape) {
-        return full(1.0, shape);
+        return full(1.0f, shape);
     }
 
     /**
@@ -150,8 +147,8 @@ public class NumJArray {
      * @return a new contiguous array filled with {@code value}
      * @throws IllegalArgumentException if the shape is invalid
      */
-    public static NumJArray full(double value, int... shape) {
-        double[] d = new double[sizeOf(checkShape(shape))];
+    public static NumJArray full(float value, int... shape) {
+        float[] d = new float[sizeOf(checkShape(shape))];
         Arrays.fill(d, value);
         return new NumJArray(d, shape);
     }
@@ -163,7 +160,7 @@ public class NumJArray {
      * @return a new 1-D array
      * @throws IllegalArgumentException if {@code values} is null
      */
-    public static NumJArray of(double... values) {
+    public static NumJArray of(float... values) {
         if (values == null) {
             throw new IllegalArgumentException("values must not be null");
         }
@@ -171,18 +168,18 @@ public class NumJArray {
     }
 
     /**
-     * Creates a 2-D array from a rectangular {@code double[][]} (the values are copied).
+     * Creates a 2-D array from a rectangular {@code float[][]} (the values are copied).
      *
      * @param rows the rows; every row must have the same length
      * @return a new 2-D array of shape {@code [rows.length, rows[0].length]}
      * @throws IllegalArgumentException if {@code rows} is null, or the rows are ragged
      */
-    public static NumJArray of(double[][] rows) {
+    public static NumJArray of(float[][] rows) {
         if (rows == null) {
             throw new IllegalArgumentException("rows must not be null");
         }
         int cols = rows.length == 0 ? 0 : rows[0].length;
-        double[] d = new double[rows.length * cols];
+        float[] d = new float[rows.length * cols];
         for (int i = 0; i < rows.length; i++) {
             if (rows[i] == null || rows[i].length != cols) {
                 throw new IllegalArgumentException("All rows must have the same length");
@@ -199,7 +196,7 @@ public class NumJArray {
      * @param stop the end of the range (exclusive)
      * @return a new 1-D array (empty if {@code stop <= 0})
      */
-    public static NumJArray arange(double stop) {
+    public static NumJArray arange(float stop) {
         return arange(0, stop, 1);
     }
 
@@ -211,7 +208,7 @@ public class NumJArray {
      * @param stop  the end of the range (exclusive)
      * @return a new 1-D array (empty if {@code stop <= start})
      */
-    public static NumJArray arange(double start, double stop) {
+    public static NumJArray arange(float start, float stop) {
         return arange(start, stop, 1);
     }
 
@@ -225,12 +222,12 @@ public class NumJArray {
      * @return a new 1-D array (empty if the range contains no values)
      * @throws IllegalArgumentException if {@code step} is 0 or not finite
      */
-    public static NumJArray arange(double start, double stop, double step) {
-        if (step == 0 || Double.isNaN(step) || Double.isInfinite(step)) {
+    public static NumJArray arange(float start, float stop, float step) {
+        if (step == 0 || Float.isNaN(step) || Float.isInfinite(step)) {
             throw new IllegalArgumentException("step must be a non-zero finite number");
         }
         int n = (int) Math.max(0, Math.ceil((stop - start) / step));
-        double[] d = new double[n];
+        float[] d = new float[n];
         for (int i = 0; i < n; i++) {
             d[i] = start + i * step;
         }
@@ -239,7 +236,7 @@ public class NumJArray {
 
     /**
      * Creates a 1-D array of {@code num} evenly spaced values from {@code start} to {@code stop},
-     * including {@code stop} (unlike {@link #arange(double, double, double)}).
+     * including {@code stop} (unlike {@link #arange(float, float, float)}).
      * For example {@code linspace(1, 4, 4)} gives {@code [1, 2, 3, 4]}.
      *
      * @param start the first value
@@ -248,18 +245,18 @@ public class NumJArray {
      * @return a new 1-D array of length {@code num}
      * @throws IllegalArgumentException if {@code num} is negative
      */
-    public static NumJArray linspace(double start, double stop, int num) {
+    public static NumJArray linspace(float start, float stop, int num) {
         if (num < 0) {
             throw new IllegalArgumentException("num must be non-negative, got " + num);
         }
-        double[] d = new double[num];
+        float[] d = new float[num];
         if (num == 0) {
             return new NumJArray(d, new int[]{0});
         }
         if (num == 1) {
             d[0] = start;
         } else {
-            double step = (stop - start) / (num - 1);
+            float step = (stop - start) / (num - 1);
             for (int i = 0; i < num; i++) {
                 d[i] = start + i * step;
             }
@@ -279,9 +276,9 @@ public class NumJArray {
         if (n < 0) {
             throw new IllegalArgumentException("n must be non-negative, got " + n);
         }
-        double[] d = new double[n * n];
+        float[] d = new float[n * n];
         for (int i = 0; i < n; i++) {
-            d[i * n + i] = 1.0;
+            d[i * n + i] = 1.0f;
         }
         return new NumJArray(d, new int[]{n, n});
     }
@@ -295,14 +292,14 @@ public class NumJArray {
      * @return a new contiguous array of random samples
      * @throws IllegalArgumentException if {@code stdDev} is negative or the shape is invalid
      */
-    public static NumJArray normal(double mean, double stdDev, int... shape) {
+    public static NumJArray normal(float mean, float stdDev, int... shape) {
         if (stdDev < 0) {
             throw new IllegalArgumentException("stdDev must be non-negative, got " + stdDev);
         }
-        double[] d = new double[sizeOf(checkShape(shape))];
+        float[] d = new float[sizeOf(checkShape(shape))];
         Random rand = new Random();
         for (int i = 0; i < d.length; i++) {
-            d[i] = mean + rand.nextGaussian() * stdDev;
+            d[i] = (float) (mean + rand.nextGaussian() * stdDev);
         }
         return new NumJArray(d, shape);
     }
@@ -316,14 +313,14 @@ public class NumJArray {
      * @return a new contiguous array of random samples
      * @throws IllegalArgumentException if {@code high < low} or the shape is invalid
      */
-    public static NumJArray uniform(double low, double high, int... shape) {
+    public static NumJArray uniform(float low, float high, int... shape) {
         if (high < low) {
             throw new IllegalArgumentException("high must be >= low");
         }
-        double[] d = new double[sizeOf(checkShape(shape))];
+        float[] d = new float[sizeOf(checkShape(shape))];
         Random rand = new Random();
         for (int i = 0; i < d.length; i++) {
-            d[i] = low + rand.nextDouble() * (high - low);
+            d[i] = low + rand.nextFloat() * (high - low);
         }
         return new NumJArray(d, shape);
     }
@@ -370,7 +367,7 @@ public class NumJArray {
      * @return the value of the one element
      * @throws IllegalStateException if the array does not contain exactly one element
      */
-    public double item() {
+    public float item() {
         if (size != 1) {
             throw new IllegalStateException("item() requires exactly 1 element, array has " + size);
         }
@@ -385,7 +382,7 @@ public class NumJArray {
      * @throws IllegalArgumentException  if the number of indices differs from {@link #ndim()}
      * @throws IndexOutOfBoundsException if any index is outside its dimension
      */
-    public double get(int... indices) {
+    public float get(int... indices) {
         return data[getFlatIndex(indices)];
     }
 
@@ -397,9 +394,26 @@ public class NumJArray {
      * @throws IllegalArgumentException  if the number of indices differs from {@link #ndim()}
      * @throws IndexOutOfBoundsException if any index is outside its dimension
      */
-    public void set(double value, int... indices) {
+    public void set(float value, int... indices) {
         data[getFlatIndex(indices)] = value;
     }
+
+    @FunctionalInterface
+    public interface FloatUnaryOperator {
+        float applyAsFloat(float operand);
+    }
+
+
+    @FunctionalInterface
+    public interface FloatBinaryOperator {
+        float applyAsFloat(float left, float right);
+    }
+
+    @FunctionalInterface
+    public interface FloatPredicate {
+        boolean test(float value);
+    }
+
 
     /**
      * Applies a function to every element.
@@ -408,15 +422,34 @@ public class NumJArray {
      * @return a new array of the same shape
      * @throws IllegalArgumentException if {@code f} is null
      */
-    public NumJArray map(DoubleUnaryOperator f) {
+    public NumJArray map(FloatUnaryOperator f) {
         if (f == null) {
             throw new IllegalArgumentException("f must not be null");
         }
-        double[] out = toContiguousData();
+        float[] out = toContiguousData();
         for (int i = 0; i < out.length; i++) {
-            out[i] = f.applyAsDouble(out[i]);
+            out[i] = f.applyAsFloat(out[i]);
         }
         return new NumJArray(out, shape);
+    }
+
+    /**
+     * Applies a function to every element in-place, mutating this array.
+     * Works safely across contiguous arrays, slices, and strided views.
+     *
+     * @param f the function to apply
+     * @return this array instance
+     * @throws IllegalArgumentException if {@code f} is null
+     */
+    public NumJArray mapi(FloatUnaryOperator f) {
+        if (f == null) {
+            throw new IllegalArgumentException("f must not be null");
+        }
+        // Iterates through the actual flat array indices mapped to this view's shape
+        for (int p : positions()) {
+            data[p] = f.applyAsFloat(data[p]);
+        }
+        return this;
     }
 
     /**
@@ -443,7 +476,7 @@ public class NumJArray {
      * @return a new array of {@code sqrt(x)}
      */
     public NumJArray sqrt() {
-        return map(Math::sqrt);
+        return map(x -> (float) Math.sqrt(x));
     }
 
     /**
@@ -452,8 +485,8 @@ public class NumJArray {
      * @param power the exponent
      * @return a new array of {@code x^power}
      */
-    public NumJArray pow(double power) {
-        return map(x -> Math.pow(x, power));
+    public NumJArray pow(float power) {
+        return map(x -> (float) Math.pow(x, power));
     }
 
     /**
@@ -462,7 +495,7 @@ public class NumJArray {
      * @return a new array of {@code exp(x)}
      */
     public NumJArray exp() {
-        return map(Math::exp);
+        return map(x -> (float) Math.exp(x));
     }
 
     /**
@@ -471,7 +504,7 @@ public class NumJArray {
      * @return a new array of {@code ln(x)}
      */
     public NumJArray log() {
-        return map(Math::log);
+        return map(x -> (float) Math.log(x));
     }
 
     /**
@@ -480,7 +513,7 @@ public class NumJArray {
      * @return a new array with each value rounded down
      */
     public NumJArray floor() {
-        return map(Math::floor);
+        return map(x -> (float) Math.floor(x));
     }
 
     /**
@@ -489,7 +522,7 @@ public class NumJArray {
      * @return a new array with each value rounded up
      */
     public NumJArray ceil() {
-        return map(Math::ceil);
+        return map(x -> (float) Math.ceil(x));
     }
 
     /**
@@ -498,7 +531,7 @@ public class NumJArray {
      * @return a new array of rounded values
      */
     public NumJArray round() {
-        return map(Math::rint);
+        return map(x -> (float) Math.rint(x));
     }
 
     /**
@@ -518,7 +551,7 @@ public class NumJArray {
      * @return a new array with values clamped into the range
      * @throws IllegalArgumentException if {@code min > max}
      */
-    public NumJArray clip(double min, double max) {
+    public NumJArray clip(float min, float max) {
         if (min > max) {
             throw new IllegalArgumentException("min must be <= max");
         }
@@ -531,7 +564,7 @@ public class NumJArray {
      * @param b the scalar
      * @return a new array of {@code x + b}
      */
-    public NumJArray add(double b) {
+    public NumJArray add(float b) {
         return map(x -> x + b);
     }
 
@@ -541,7 +574,7 @@ public class NumJArray {
      * @param b the scalar
      * @return a new array of {@code x - b}
      */
-    public NumJArray sub(double b) {
+    public NumJArray sub(float b) {
         return map(x -> x - b);
     }
 
@@ -551,17 +584,17 @@ public class NumJArray {
      * @param b the scalar
      * @return a new array of {@code x * b}
      */
-    public NumJArray mul(double b) {
+    public NumJArray mul(float b) {
         return map(x -> x * b);
     }
 
     /**
      * Divides every element by a scalar.
      *
-     * @param b the scalar (dividing by 0 gives Infinity/NaN, as with plain doubles)
+     * @param b the scalar (dividing by 0 gives Infinity/NaN, as with plain floats)
      * @return a new array of {@code x / b}
      */
-    public NumJArray div(double b) {
+    public NumJArray div(float b) {
         return map(x -> x / b);
     }
 
@@ -572,9 +605,9 @@ public class NumJArray {
      * @param b the divisor
      * @return a new array of {@code x mod b}
      */
-    public NumJArray mod(double b) {
+    public NumJArray mod(float b) {
         return map(x -> {
-            double r = x % b;
+            float r = x % b;
             return (r != 0 && (r < 0) != (b < 0)) ? r + b : r;
         });
     }
@@ -628,9 +661,9 @@ public class NumJArray {
      *
      * @return the sum ({@code 0.0} for an empty array)
      */
-    public double sum() {
-        double total = 0;
-        for (double v : readOnlyData()) total += v;
+    public float sum() {
+        float total = 0;
+        for (float v : readOnlyData()) total += v;
         return total;
     }
 
@@ -639,9 +672,9 @@ public class NumJArray {
      *
      * @return the product ({@code 1.0} for an empty array)
      */
-    public double prod() {
-        double total = 1;
-        for (double v : readOnlyData()) total *= v;
+    public float prod() {
+        float total = 1;
+        for (float v : readOnlyData()) total *= v;
         return total;
     }
 
@@ -650,7 +683,7 @@ public class NumJArray {
      *
      * @return the mean ({@code NaN} for an empty array)
      */
-    public double mean() {
+    public float mean() {
         return sum() / size;
     }
 
@@ -660,10 +693,10 @@ public class NumJArray {
      * @return the minimum value
      * @throws IllegalStateException if the array is empty
      */
-    public double min() {
+    public float min() {
         requireNonEmpty("min");
-        double[] d = readOnlyData();
-        double best = d[0];
+        float[] d = readOnlyData();
+        float best = d[0];
         for (int i = 1; i < d.length; i++) best = Math.min(best, d[i]);
         return best;
     }
@@ -674,10 +707,10 @@ public class NumJArray {
      * @return the maximum value
      * @throws IllegalStateException if the array is empty
      */
-    public double max() {
+    public float max() {
         requireNonEmpty("max");
-        double[] d = readOnlyData();
-        double best = d[0];
+        float[] d = readOnlyData();
+        float best = d[0];
         for (int i = 1; i < d.length; i++) best = Math.max(best, d[i]);
         return best;
     }
@@ -687,10 +720,10 @@ public class NumJArray {
      *
      * @return the variance ({@code NaN} for an empty array)
      */
-    public double var() {
-        double mean = mean();
-        double acc = 0;
-        for (double v : readOnlyData()) acc += (v - mean) * (v - mean);
+    public float var() {
+        float mean = mean();
+        float acc = 0;
+        for (float v : readOnlyData()) acc += (v - mean) * (v - mean);
         return acc / size;
     }
 
@@ -699,8 +732,8 @@ public class NumJArray {
      *
      * @return the square root of {@link #var()}
      */
-    public double std() {
-        return Math.sqrt(var());
+    public float std() {
+        return (float) Math.sqrt(var());
     }
 
     /**
@@ -708,10 +741,10 @@ public class NumJArray {
      *
      * @return the norm
      */
-    public double norm() {
-        double acc = 0;
-        for (double v : readOnlyData()) acc += v * v;
-        return Math.sqrt(acc);
+    public float norm() {
+        float acc = 0;
+        for (float v : readOnlyData()) acc += v * v;
+        return (float) Math.sqrt(acc);
     }
 
     /**
@@ -720,7 +753,7 @@ public class NumJArray {
      * @return the trace
      * @throws IllegalArgumentException if the array is not 2-D
      */
-    public double trace() {
+    public float trace() {
         if (shape.length != 2) {
             throw new IllegalArgumentException(
                 "trace() needs a 2D array, got " + shape.length + "D; use trace(axis1, axis2) for N-D arrays");
@@ -780,7 +813,7 @@ public class NumJArray {
      * @return the scalar inner product
      * @throws IllegalArgumentException if {@code other} is null or the shapes differ
      */
-    public double inner(NumJArray other) {
+    public float inner(NumJArray other) {
         if (other == null) {
             throw new IllegalArgumentException("other must not be null");
         }
@@ -788,9 +821,9 @@ public class NumJArray {
             throw new IllegalArgumentException(
                 "Shapes must match for inner: " + Arrays.toString(shape) + " vs " + Arrays.toString(other.shape));
         }
-        double[] a = readOnlyData();
-        double[] b = other.readOnlyData();
-        double acc = 0;
+        float[] a = readOnlyData();
+        float[] b = other.readOnlyData();
+        float acc = 0;
         for (int i = 0; i < a.length; i++) acc += a[i] * b[i];
         return acc;
     }
@@ -823,7 +856,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the axis is out of range
      */
     public NumJArray sumAxis(int axis) {
-        return reduceAxis(axis, Double::sum, 0.0);
+        return reduceAxis(axis, Float::sum, 0.0f);
     }
 
     /**
@@ -834,7 +867,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the axis is out of range
      */
     public NumJArray prodAxis(int axis) {
-        return reduceAxis(axis, (x, y) -> x * y, 1.0);
+        return reduceAxis(axis, (x, y) -> x * y, 1.0f);
     }
 
     /**
@@ -910,7 +943,7 @@ public class NumJArray {
      * Index of the largest value along an axis (first one wins ties).
      *
      * @param axis the axis to search; negative values count from the end
-     * @return a new array (same shape minus {@code axis}) holding indices stored as doubles
+     * @return a new array (same shape minus {@code axis}) holding indices stored as floats
      * @throws IllegalArgumentException if the axis is out of range or has length 0
      */
     public NumJArray argMaxAxis(int axis) {
@@ -921,7 +954,7 @@ public class NumJArray {
      * Index of the smallest value along an axis (first one wins ties).
      *
      * @param axis the axis to search; negative values count from the end
-     * @return a new array (same shape minus {@code axis}) holding indices stored as doubles
+     * @return a new array (same shape minus {@code axis}) holding indices stored as floats
      * @throws IllegalArgumentException if the axis is out of range or has length 0
      */
     public NumJArray argMinAxis(int axis) {
@@ -954,12 +987,12 @@ public class NumJArray {
      * @param x the input
      * @return a value in {@code (0, 1)}
      */
-    public static double sig(double x) {
+    public static float sig(float x) {
         if (x >= 0) {
-            return 1.0 / (1.0 + Math.exp(-x));
+            return (float) (1.0f / (1.0f + Math.exp(-x)));
         }
-        double e = Math.exp(x);
-        return e / (1.0 + e);
+        float e = (float) Math.exp(x);
+        return (float) (e / (1.0f + e));
     }
 
     /**
@@ -968,8 +1001,8 @@ public class NumJArray {
      * @param x the input
      * @return a value in {@code (-1, 1)}
      */
-    public static double tn(double x) {
-        return Math.tanh(x);
+    public static float tn(float x) {
+        return (float) Math.tanh(x);
     }
 
     /**
@@ -978,7 +1011,7 @@ public class NumJArray {
      * @return a new array of the same shape
      */
     public NumJArray relu() {
-        return map(x -> Math.max(0, x));
+        return map(x -> Math.max(0f, x));
     }
 
     /**
@@ -987,7 +1020,7 @@ public class NumJArray {
      * @return a new array of 0s and 1s (input is the pre-activation value)
      */
     public NumJArray reluD() {
-        return map(x -> x > 0 ? 1.0 : 0.0);
+        return map(x -> x > 0f ? 1.0f : 0.0f);
     }
 
     /**
@@ -1006,8 +1039,8 @@ public class NumJArray {
      */
     public NumJArray sigmoidD() {
         return map(x -> {
-            double s = sig(x);
-            return s * (1.0 - s);
+            float s = sig(x);
+            return s * (1.0f - s);
         });
     }
 
@@ -1017,7 +1050,7 @@ public class NumJArray {
      * @return a new array of the same shape with values in {@code (-1, 1)}
      */
     public NumJArray tanh() {
-        return map(Math::tanh);
+        return map((float x) -> (float) Math.tanh(x));
     }
 
     /**
@@ -1027,8 +1060,8 @@ public class NumJArray {
      */
     public NumJArray tanhD() {
         return map(x -> {
-            double t = Math.tanh(x);
-            return 1.0 - t * t;
+            float t = (float) Math.tanh(x);
+            return 1.0f - t * t;
         });
     }
 
@@ -1038,15 +1071,15 @@ public class NumJArray {
      * @return a new array of the same shape
      */
     public NumJArray softmax() {
-        double[] out = toContiguousData();
+        float[] out = toContiguousData();
         if (out.length == 0) return new NumJArray(out, shape);
 
-        double max = Double.NEGATIVE_INFINITY;
-        for (double v : out) max = Math.max(max, v);
+        float max = Float.NEGATIVE_INFINITY;
+        for (float v : out) max = Math.max(max, v);
 
-        double total = 0;
+        float total = 0;
         for (int i = 0; i < out.length; i++) {
-            out[i] = Math.exp(out[i] - max);
+            out[i] = (float) Math.exp(out[i] - max);
             total += out[i];
         }
         for (int i = 0; i < out.length; i++) out[i] /= total;
@@ -1069,13 +1102,13 @@ public class NumJArray {
         int st = out.strides[ax];
 
         for (int base : out.laneOffsets(ax)) {
-            double max = Double.NEGATIVE_INFINITY;
+            float max = Float.NEGATIVE_INFINITY;
             for (int k = 0; k < len; k++) max = Math.max(max, out.data[base + k * st]);
 
-            double total = 0;
+            float total = 0;
             for (int k = 0; k < len; k++) {
                 int p = base + k * st;
-                out.data[p] = Math.exp(out.data[p] - max);
+                out.data[p] = (float) Math.exp(out.data[p] - max);
                 total += out.data[p];
             }
             for (int k = 0; k < len; k++) out.data[base + k * st] /= total;
@@ -1189,7 +1222,7 @@ public class NumJArray {
         NumJArray bB = b2.broadcastTo(concatInts(batch, k, p));
 
         int count = sizeOf(batch);
-        double[] out = new double[count * m * p];
+        float[] out = new float[count * m * p];
 
         int[] idx = new int[nBatch];
         int baseA = aB.offset;
@@ -1207,7 +1240,7 @@ public class NumJArray {
                 int rowOut = outBase + i * p;
 
                 for (int kk = 0; kk < k; kk++) {
-                    double valA = aB.data[rowA + kk * aCol];
+                    float valA = aB.data[rowA + kk * aCol];
                     int rowB = baseB + kk * bRow;
 
                     for (int j = 0; j < p; j++) {
@@ -1617,7 +1650,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where {@code x == b}, otherwise 0.0
      */
-    public NumJArray equal(double b) {
+    public NumJArray equal(float b) {
         return map(x -> flag(x == b));
     }
 
@@ -1638,7 +1671,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where {@code x != b}, otherwise 0.0
      */
-    public NumJArray notEqual(double b) {
+    public NumJArray notEqual(float b) {
         return map(x -> flag(x != b));
     }
 
@@ -1659,7 +1692,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where {@code x > b}, otherwise 0.0
      */
-    public NumJArray greater(double b) {
+    public NumJArray greater(float b) {
         return map(x -> flag(x > b));
     }
 
@@ -1680,7 +1713,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where {@code x >= b}, otherwise 0.0
      */
-    public NumJArray greaterEqual(double b) {
+    public NumJArray greaterEqual(float b) {
         return map(x -> flag(x >= b));
     }
 
@@ -1701,7 +1734,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where {@code x < b}, otherwise 0.0
      */
-    public NumJArray less(double b) {
+    public NumJArray less(float b) {
         return map(x -> flag(x < b));
     }
 
@@ -1722,7 +1755,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where {@code x <= b}, otherwise 0.0
      */
-    public NumJArray lessEqual(double b) {
+    public NumJArray lessEqual(float b) {
         return map(x -> flag(x <= b));
     }
 
@@ -1774,7 +1807,7 @@ public class NumJArray {
      * @return {@code true} if all elements are non-zero (also {@code true} for an empty array)
      */
     public boolean all() {
-        for (double v : readOnlyData()) {
+        for (float v : readOnlyData()) {
             if (v == 0) return false;
         }
         return true;
@@ -1786,7 +1819,7 @@ public class NumJArray {
      * @return {@code true} if any element is non-zero ({@code false} for an empty array)
      */
     public boolean any() {
-        for (double v : readOnlyData()) {
+        for (float v : readOnlyData()) {
             if (v != 0) return true;
         }
         return false;
@@ -1800,7 +1833,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the axis is out of range
      */
     public NumJArray allAxis(int axis) {
-        return reduceAxis(axis, (acc, x) -> flag(acc != 0 && x != 0), 1.0);
+        return reduceAxis(axis, (acc, x) -> flag(acc != 0 && x != 0), 1.0f);
     }
 
     /**
@@ -1811,14 +1844,14 @@ public class NumJArray {
      * @throws IllegalArgumentException if the axis is out of range
      */
     public NumJArray anyAxis(int axis) {
-        return reduceAxis(axis, (acc, x) -> flag(acc != 0 || x != 0), 0.0);
+        return reduceAxis(axis, (acc, x) -> flag(acc != 0 || x != 0), 0.0f);
     }
 
     /** Default relative tolerance for {@code isClose} / {@code allClose} (same as NumPy). */
-    public static final double DEFAULT_RTOL = 1e-5;
+    public static final float DEFAULT_RTOL = 1e-5f;
 
     /** Default absolute tolerance for {@code isClose} / {@code allClose} (same as NumPy). */
-    public static final double DEFAULT_ATOL = 1e-8;
+    public static final float DEFAULT_ATOL = 1e-8f;
 
     /**
      * Element-wise "nearly equal" using the default tolerances ({@code rtol = 1e-5}, {@code atol = 1e-8}).
@@ -1841,7 +1874,7 @@ public class NumJArray {
      * @return a new array of 1.0 where the values are close, otherwise 0.0
      * @throws IllegalArgumentException if {@code b} is null, a tolerance is negative, or the shapes cannot be broadcast
      */
-    public NumJArray isClose(NumJArray b, double rtol, double atol) {
+    public NumJArray isClose(NumJArray b, float rtol, float atol) {
         checkTolerances(rtol, atol);
         return broadcastOp(b, (x, y) -> flag(closeEnough(x, y, rtol, atol)));
     }
@@ -1852,7 +1885,7 @@ public class NumJArray {
      * @param b the value to compare with
      * @return a new array of 1.0 where the values are close, otherwise 0.0
      */
-    public NumJArray isClose(double b) {
+    public NumJArray isClose(float b) {
         return isClose(b, DEFAULT_RTOL, DEFAULT_ATOL);
     }
 
@@ -1865,7 +1898,7 @@ public class NumJArray {
      * @return a new array of 1.0 where the values are close, otherwise 0.0
      * @throws IllegalArgumentException if a tolerance is negative
      */
-    public NumJArray isClose(double b, double rtol, double atol) {
+    public NumJArray isClose(float b, float rtol, float atol) {
         checkTolerances(rtol, atol);
         return map(x -> flag(closeEnough(x, b, rtol, atol)));
     }
@@ -1891,7 +1924,7 @@ public class NumJArray {
      * @return {@code true} if every pair of elements is close
      * @throws IllegalArgumentException if {@code b} is null, a tolerance is negative, or the shapes cannot be broadcast
      */
-    public boolean allClose(NumJArray b, double rtol, double atol) {
+    public boolean allClose(NumJArray b, float rtol, float atol) {
         return isClose(b, rtol, atol).all();
     }
 
@@ -1902,7 +1935,7 @@ public class NumJArray {
      */
     public int countNonzero() {
         int count = 0;
-        for (double v : readOnlyData()) {
+        for (float v : readOnlyData()) {
             if (v != 0) count++;
         }
         return count;
@@ -1912,7 +1945,7 @@ public class NumJArray {
      * Counts the non-zero elements along an axis.
      *
      * @param axis the axis to collapse; negative values count from the end
-     * @return a new array with that dimension removed, holding the counts (stored as doubles)
+     * @return a new array with that dimension removed, holding the counts (stored as floats)
      * @throws IllegalArgumentException if the axis is out of range
      */
     public NumJArray countNonzero(int axis) {
@@ -1930,9 +1963,9 @@ public class NumJArray {
         if (shape.length == 0) {
             throw new IllegalArgumentException("nonzero() needs at least 1 dimension");
         }
-        double[] d = readOnlyData();
+        float[] d = readOnlyData();
         int count = 0;
-        for (double v : d) if (v != 0) count++;
+        for (float v : d) if (v != 0) count++;
 
         int nd = shape.length;
         int[][] out = new int[nd][count];
@@ -1956,7 +1989,7 @@ public class NumJArray {
      * Finds the coordinates of every non-zero element as rows of a table.
      *
      * @return a new array of shape {@code [count, ndim]}; row i holds the coordinates of the i-th
-     *         non-zero element (stored as doubles)
+     *         non-zero element (stored as floats)
      * @throws IllegalArgumentException if the array is 0-D
      */
     public NumJArray argwhere() {
@@ -1964,7 +1997,7 @@ public class NumJArray {
         int nd = nz.length;
         int count = nz[0].length;
 
-        double[] out = new double[count * nd];
+        float[] out = new float[count * nd];
         for (int i = 0; i < count; i++) {
             for (int k = 0; k < nd; k++) out[i * nd + k] = nz[k][i];
         }
@@ -1983,7 +2016,7 @@ public class NumJArray {
         if (indices == null) {
             throw new IllegalArgumentException("indices must not be null");
         }
-        double[] out = new double[indices.length];
+        float[] out = new float[indices.length];
         for (int i = 0; i < indices.length; i++) {
             out[i] = data[pointer(indices[i])];
         }
@@ -2036,7 +2069,7 @@ public class NumJArray {
      * @throws IllegalArgumentException  if {@code flatIndices} is null
      * @throws IndexOutOfBoundsException if any index is outside the array
      */
-    public NumJArray put(int[] flatIndices, double value) {
+    public NumJArray put(int[] flatIndices, float value) {
         int[] slots = resolveFlat(flatIndices);
         for (int s : slots) data[s] = value;
         return this;
@@ -2058,7 +2091,7 @@ public class NumJArray {
             throw new IllegalArgumentException("values must not be null");
         }
         int[] slots = resolveFlat(flatIndices);
-        double[] v = values.toContiguousData();
+        float[] v = values.toContiguousData();
         if (v.length == 0) {
             if (slots.length == 0) return this;
             throw new IllegalArgumentException("values must not be empty");
@@ -2089,7 +2122,7 @@ public class NumJArray {
         NumJArray out = copy();
         int len = out.shape[ax];
         int st = out.strides[ax];
-        double[] lane = new double[len];
+        float[] lane = new float[len];
 
         for (int base : out.laneOffsets(ax)) {
             for (int k = 0; k < len; k++) lane[k] = out.data[base + k * st];
@@ -2105,7 +2138,7 @@ public class NumJArray {
      * @return a new 1-D array with {@link #size()} sorted values
      */
     public NumJArray sortFlat() {
-        double[] d = toContiguousData();
+        float[] d = toContiguousData();
         Arrays.sort(d);
         return new NumJArray(d, new int[]{d.length});
     }
@@ -2113,7 +2146,7 @@ public class NumJArray {
     /**
      * Finds the order that would sort the array along the last axis. Ties keep their original order.
      *
-     * @return a new array of the same shape holding indices (stored as doubles)
+     * @return a new array of the same shape holding indices (stored as floats)
      * @throws IllegalArgumentException if the array is 0-D
      */
     public NumJArray argsort() {
@@ -2125,7 +2158,7 @@ public class NumJArray {
      * Use {@code take(axis, order)} or {@code flip} on the result for other orderings.
      *
      * @param axis the axis to sort along; negative values count from the end
-     * @return a new array of the same shape holding indices along {@code axis} (stored as doubles)
+     * @return a new array of the same shape holding indices along {@code axis} (stored as floats)
      * @throws IllegalArgumentException if the axis is out of range
      */
     public NumJArray argsort(int axis) {
@@ -2137,7 +2170,7 @@ public class NumJArray {
 
         int[] srcLanes = laneOffsets(ax);
         int[] dstLanes = out.laneOffsets(ax);
-        final double[] vals = new double[len];
+        final float[] vals = new float[len];
         Integer[] order = new Integer[len];
 
         for (int l = 0; l < srcLanes.length; l++) {
@@ -2154,7 +2187,7 @@ public class NumJArray {
     /**
      * Finds the order that would sort all elements as one flat list. Ties keep their original order.
      *
-     * @return a new 1-D array of flat positions (stored as doubles)
+     * @return a new 1-D array of flat positions (stored as floats)
      */
     public NumJArray argsortFlat() {
         return flatten().argsort(0);
@@ -2173,18 +2206,18 @@ public class NumJArray {
      * Finds the distinct values together with how often each occurs.
      *
      * @return an array of two 1-D arrays: {@code [0]} the sorted unique values, {@code [1]} their counts
-     *         (stored as doubles)
+     *         (stored as floats)
      */
     public NumJArray[] uniqueCounts() {
-        double[] d = toContiguousData();
+        float[] d = toContiguousData();
         Arrays.sort(d);
 
-        double[] values = new double[d.length];
-        double[] counts = new double[d.length];
+        float[] values = new float[d.length];
+        float[] counts = new float[d.length];
         int n = 0;
 
-        for (double v : d) {
-            if (n > 0 && (values[n - 1] == v || (Double.isNaN(values[n - 1]) && Double.isNaN(v)))) {
+        for (float v : d) {
+            if (n > 0 && (values[n - 1] == v || (Float.isNaN(values[n - 1]) && Float.isNaN(v)))) {
                 counts[n - 1]++;
             } else {
                 values[n] = v;
@@ -2211,7 +2244,7 @@ public class NumJArray {
     }
 
     /**
-     * Repeats every slice along an axis, e.g. {@code repeat(2, 0)} doubles each row in place.
+     * Repeats every slice along an axis, e.g. {@code repeat(2, 0)} floats each row in place.
      *
      * @param repeats how many times to repeat each slice; must be non-negative
      * @param axis    the axis to repeat along; negative values count from the end
@@ -2308,7 +2341,7 @@ public class NumJArray {
             outShape[i] = baseShape[i] * ((i < leadR) ? 1 : reps[i - leadR]);
         }
 
-        double[] out = new double[sizeOf(outShape)];
+        float[] out = new float[sizeOf(outShape)];
         if (out.length == 0) return new NumJArray(out, outShape);
 
         int[] idx = new int[nd];
@@ -2472,7 +2505,7 @@ public class NumJArray {
      * @return a new 1-D array of {@link #size()} partial sums
      */
     public NumJArray cumSum() {
-        double[] d = toContiguousData();
+        float[] d = toContiguousData();
         for (int i = 1; i < d.length; i++) d[i] += d[i - 1];
         return new NumJArray(d, new int[]{d.length});
     }
@@ -2483,7 +2516,7 @@ public class NumJArray {
      * @return a new 1-D array of {@link #size()} partial products
      */
     public NumJArray cumProd() {
-        double[] d = toContiguousData();
+        float[] d = toContiguousData();
         for (int i = 1; i < d.length; i++) d[i] *= d[i - 1];
         return new NumJArray(d, new int[]{d.length});
     }
@@ -2548,8 +2581,8 @@ public class NumJArray {
      * @return the middle value (the mean of the two middle values for an even count); NaN if any element is NaN
      * @throws IllegalStateException if the array is empty
      */
-    public double median() {
-        return quantile(0.5);
+    public float median() {
+        return quantile(0.5f);
     }
 
     /**
@@ -2560,7 +2593,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the axis is out of range or has length 0
      */
     public NumJArray median(int axis) {
-        return quantile(0.5, axis);
+        return quantile(0.5f, axis);
     }
 
     /**
@@ -2571,11 +2604,11 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code p} is outside {@code [0, 100]}
      * @throws IllegalStateException    if the array is empty
      */
-    public double percentile(double p) {
+    public float percentile(float p) {
         if (!(p >= 0 && p <= 100)) {
             throw new IllegalArgumentException("percentile must be between 0 and 100, got " + p);
         }
-        return quantile(p / 100.0);
+        return quantile(p / 100.0f);
     }
 
     /**
@@ -2586,11 +2619,11 @@ public class NumJArray {
      * @return a new array with that dimension removed
      * @throws IllegalArgumentException if {@code p} is outside {@code [0, 100]}, or the axis is out of range or has length 0
      */
-    public NumJArray percentile(double p, int axis) {
+    public NumJArray percentile(float p, int axis) {
         if (!(p >= 0 && p <= 100)) {
             throw new IllegalArgumentException("percentile must be between 0 and 100, got " + p);
         }
-        return quantile(p / 100.0, axis);
+        return quantile(p / 100.0f, axis);
     }
 
     /**
@@ -2602,10 +2635,10 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code q} is outside {@code [0, 1]}
      * @throws IllegalStateException    if the array is empty
      */
-    public double quantile(double q) {
+    public float quantile(float q) {
         checkQuantile(q);
         requireNonEmpty("quantile");
-        double[] d = toContiguousData();
+        float[] d = toContiguousData();
         Arrays.sort(d);
         return interpolateSorted(d, q);
     }
@@ -2618,7 +2651,7 @@ public class NumJArray {
      * @return a new array with that dimension removed
      * @throws IllegalArgumentException if {@code q} is outside {@code [0, 1]}, or the axis is out of range or has length 0
      */
-    public NumJArray quantile(double q, int axis) {
+    public NumJArray quantile(float q, int axis) {
         checkQuantile(q);
         int ax = normalizeAxis(axis);
         int len = shape[ax];
@@ -2628,8 +2661,8 @@ public class NumJArray {
 
         int st = strides[ax];
         int[] lanes = laneOffsets(ax);
-        double[] out = new double[lanes.length];
-        double[] lane = new double[len];
+        float[] out = new float[lanes.length];
+        float[] lane = new float[len];
 
         for (int l = 0; l < lanes.length; l++) {
             for (int k = 0; k < len; k++) lane[k] = data[lanes[l] + k * st];
@@ -2672,10 +2705,10 @@ public class NumJArray {
      * @throws IllegalArgumentException if a size is negative
      */
     public static NumJArray eye(int n, int m, int k) {
-        double[] d = new double[sizeOf(checkShape(new int[]{n, m}))];
+        float[] d = new float[sizeOf(checkShape(new int[]{n, m}))];
         for (int i = 0; i < n; i++) {
             long j = (long) i + k;
-            if (j >= 0 && j < m) d[i * m + (int) j] = 1.0;
+            if (j >= 0 && j < m) d[i * m + (int) j] = 1.0f;
         }
         return new NumJArray(d, new int[]{n, m});
     }
@@ -2702,8 +2735,8 @@ public class NumJArray {
         if (shape.length == 1) {
             int n = shape[0];
             int dim = n + Math.abs(k);
-            double[] out = new double[sizeOf(checkShape(new int[]{dim, dim}))];
-            double[] v = toContiguousData();
+            float[] out = new float[sizeOf(checkShape(new int[]{dim, dim}))];
+            float[] v = toContiguousData();
             for (int i = 0; i < n; i++) {
                 int row = (k >= 0) ? i : i - k;
                 int col = (k >= 0) ? i + k : i;
@@ -2781,9 +2814,9 @@ public class NumJArray {
         if (b == null) {
             throw new IllegalArgumentException("b must not be null");
         }
-        double[] x = readOnlyData();
-        double[] y = b.readOnlyData();
-        double[] out = new double[sizeOf(new int[]{x.length, y.length})];
+        float[] x = readOnlyData();
+        float[] y = b.readOnlyData();
+        float[] out = new float[sizeOf(new int[]{x.length, y.length})];
 
         for (int i = 0; i < x.length; i++) {
             for (int j = 0; j < y.length; j++) out[i * y.length + j] = x[i] * y[j];
@@ -2797,7 +2830,7 @@ public class NumJArray {
      * @return a new array of 1.0 where the value is NaN, otherwise 0.0
      */
     public NumJArray isNaN() {
-        return map(x -> flag(Double.isNaN(x)));
+        return map(x -> flag(Float.isNaN(x)));
     }
 
     /**
@@ -2806,7 +2839,7 @@ public class NumJArray {
      * @return a new array of 1.0 where the value is +Infinity or -Infinity, otherwise 0.0
      */
     public NumJArray isInf() {
-        return map(x -> flag(Double.isInfinite(x)));
+        return map(x -> flag(Float.isInfinite(x)));
     }
 
     /**
@@ -2815,7 +2848,7 @@ public class NumJArray {
      * @return a new array of 1.0 where the value is finite, otherwise 0.0
      */
     public NumJArray isFinite() {
-        return map(x -> flag(Double.isFinite(x)));
+        return map(x -> flag(Float.isFinite(x)));
     }
 
     /**
@@ -2835,7 +2868,7 @@ public class NumJArray {
      * @param b the scalar
      * @return a new array of {@code max(x, b)}
      */
-    public NumJArray maximum(double b) {
+    public NumJArray maximum(float b) {
         return map(x -> Math.max(x, b));
     }
 
@@ -2856,7 +2889,7 @@ public class NumJArray {
      * @param b the scalar
      * @return a new array of {@code min(x, b)}
      */
-    public NumJArray minimum(double b) {
+    public NumJArray minimum(float b) {
         return map(x -> Math.min(x, b));
     }
 
@@ -2873,28 +2906,28 @@ public class NumJArray {
     }
 
     /** Ordering for sorting: normal numeric order, NaN last, and 0.0 equal to -0.0. */
-    private static int compareNaNLast(double x, double y) {
+    private static int compareNaNLast(float x, float y) {
         if (x < y) return -1;
         if (x > y) return 1;
-        boolean nx = Double.isNaN(x);
-        boolean ny = Double.isNaN(y);
+        boolean nx = Float.isNaN(x);
+        boolean ny = Float.isNaN(y);
         return (nx == ny) ? 0 : (nx ? 1 : -1);
     }
 
-    private static void checkQuantile(double q) {
+    private static void checkQuantile(float q) {
         if (!(q >= 0 && q <= 1)) {
             throw new IllegalArgumentException("quantile must be between 0 and 1, got " + q);
         }
     }
 
-    private static double interpolateSorted(double[] sorted, double q) {
+    private static float interpolateSorted(float[] sorted, float q) {
         int n = sorted.length;
-        if (Double.isNaN(sorted[n - 1])) return Double.NaN;
+        if (Float.isNaN(sorted[n - 1])) return Float.NaN;
 
-        double pos = q * (n - 1);
+        float pos = q * (n - 1);
         int lo = (int) Math.floor(pos);
         int hi = Math.min(lo + 1, n - 1);
-        double frac = pos - lo;
+        float frac = pos - lo;
         if (frac == 0 || sorted[lo] == sorted[hi]) return sorted[lo];
         return sorted[lo] + (sorted[hi] - sorted[lo]) * frac;
     }
@@ -2904,7 +2937,7 @@ public class NumJArray {
         if (nd < 2) {
             throw new IllegalArgumentException("tril/triu need at least 2 dimensions, got " + nd + "D");
         }
-        double[] d = toContiguousData();
+        float[] d = toContiguousData();
         if (d.length == 0) return new NumJArray(d, shape);
 
         int rows = shape[nd - 2];
@@ -2919,17 +2952,17 @@ public class NumJArray {
     }
 
     /** Converts a boolean to the librarys truth values: 1.0 for true, 0.0 for false. */
-    private static double flag(boolean condition) {
-        return condition ? 1.0 : 0.0;
+    private static float flag(boolean condition) {
+        return (float) (condition ? 1.0 : 0.0);
     }
 
-    private static boolean closeEnough(double x, double y, double rtol, double atol) {
+    private static boolean closeEnough(float x, float y, float rtol, float atol) {
         if (x == y) return true;
-        if (Double.isInfinite(x) || Double.isInfinite(y)) return false;
+        if (Float.isInfinite(x) || Float.isInfinite(y)) return false;
         return Math.abs(x - y) <= atol + rtol * Math.abs(y);
     }
 
-    private static void checkTolerances(double rtol, double atol) {
+    private static void checkTolerances(float rtol, float atol) {
         if (rtol < 0 || atol < 0) {
             throw new IllegalArgumentException("rtol and atol must be non-negative");
         }
@@ -2944,12 +2977,12 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code op} is null
      * @throws IllegalStateException    if the array is empty
      */
-    public double reduce(DoubleBinaryOperator op) {
+    public float reduce(FloatBinaryOperator op) {
         requireOperator(op);
         requireNonEmpty("reduce");
-        double[] d = readOnlyData();
-        double acc = d[0];
-        for (int i = 1; i < d.length; i++) acc = op.applyAsDouble(acc, d[i]);
+        float[] d = readOnlyData();
+        float acc = d[0];
+        for (int i = 1; i < d.length; i++) acc = op.applyAsFloat(acc, d[i]);
         return acc;
     }
 
@@ -2961,10 +2994,10 @@ public class NumJArray {
      * @return the folded value
      * @throws IllegalArgumentException if {@code op} is null
      */
-    public double reduce(DoubleBinaryOperator op, double init) {
+    public float reduce(FloatBinaryOperator op, float init) {
         requireOperator(op);
-        double acc = init;
-        for (double v : readOnlyData()) acc = op.applyAsDouble(acc, v);
+        float acc = init;
+        for (float v : readOnlyData()) acc = op.applyAsFloat(acc, v);
         return acc;
     }
 
@@ -2976,7 +3009,7 @@ public class NumJArray {
      * @return a new array with that dimension removed
      * @throws IllegalArgumentException if the axis is out of range or has length 0, or {@code op} is null
      */
-    public NumJArray reduceAxis(int axis, DoubleBinaryOperator op) {
+    public NumJArray reduceAxis(int axis, FloatBinaryOperator op) {
         requireOperator(op);
         return reduceLanes(axis, op, null);
     }
@@ -2990,14 +3023,14 @@ public class NumJArray {
      * @return a new array with that dimension removed
      * @throws IllegalArgumentException if the axis is out of range or {@code op} is null
      */
-    public NumJArray reduceAxis(int axis, DoubleBinaryOperator op, double init) {
+    public NumJArray reduceAxis(int axis, FloatBinaryOperator op, float init) {
         requireOperator(op);
         return reduceLanes(axis, op, init);
     }
 
     /**
      * Sums over several axes at once, e.g. {@code sum(0, 2)} on shape {@code [2, 3, 4]} gives shape {@code [3]}.
-     * (Call {@link #sum()} with no arguments for a plain {@code double} total.)
+     * (Call {@link #sum()} with no arguments for a plain {@code float} total.)
      *
      * @param axes the axes to collapse; negative values count from the end. An empty list returns a copy
      * @return a new array with those dimensions removed
@@ -3082,7 +3115,7 @@ public class NumJArray {
      * @return a new array holding the results
      * @throws IllegalArgumentException if {@code b} or {@code op} is null, or the shapes cannot be broadcast
      */
-    public NumJArray elementwise(NumJArray b, DoubleBinaryOperator op) {
+    public NumJArray elementwise(NumJArray b, FloatBinaryOperator op) {
         requireOperator(op);
         return broadcastOp(b, op);
     }
@@ -3095,19 +3128,19 @@ public class NumJArray {
      * @return a new array holding the results
      * @throws IllegalArgumentException if {@code op} is null
      */
-    public NumJArray elementwise(double b, DoubleBinaryOperator op) {
+    public NumJArray elementwise(float b, FloatBinaryOperator op) {
         requireOperator(op);
-        return map(x -> op.applyAsDouble(x, b));
+        return map(x -> op.applyAsFloat(x, b));
     }
 
     /**
-     * Applies your own function to every element (same as {@link #map(DoubleUnaryOperator)}).
+     * Applies your own function to every element (same as {@link #map(floatUnaryOperator)}).
      *
      * @param op the function to apply
      * @return a new array of the same shape
      * @throws IllegalArgumentException if {@code op} is null
      */
-    public NumJArray elementwise(DoubleUnaryOperator op) {
+    public NumJArray elementwise(FloatUnaryOperator op) {
         return map(op);
     }
 
@@ -3118,7 +3151,7 @@ public class NumJArray {
          * @param coordinate one index per dimension; the array is reused between calls, so copy it if you keep it
          * @return the value to store at that position
          */
-        double apply(int[] coordinate);
+        float apply(int[] coordinate);
     }
 
     /**
@@ -3128,11 +3161,11 @@ public class NumJArray {
      * @return this array
      * @throws IllegalArgumentException if {@code op} is null
      */
-    public NumJArray elementwisei(DoubleUnaryOperator op) {
+    public NumJArray elementwisei(FloatUnaryOperator op) {
         if (op == null) {
             throw new IllegalArgumentException("op must not be null");
         }
-        for (int p : positions()) data[p] = op.applyAsDouble(data[p]);
+        for (int p : positions()) data[p] = op.applyAsFloat(data[p]);
         return this;
     }
 
@@ -3144,9 +3177,9 @@ public class NumJArray {
      * @return this array
      * @throws IllegalArgumentException if {@code op} is null
      */
-    public NumJArray elementwisei(double b, DoubleBinaryOperator op) {
+    public NumJArray elementwisei(float b, FloatBinaryOperator op) {
         requireOperator(op);
-        for (int p : positions()) data[p] = op.applyAsDouble(data[p], b);
+        for (int p : positions()) data[p] = op.applyAsFloat(data[p], b);
         return this;
     }
 
@@ -3160,15 +3193,15 @@ public class NumJArray {
      * @return this array
      * @throws IllegalArgumentException if {@code b} or {@code op} is null, or {@code b} cannot be broadcast to this shape
      */
-    public NumJArray elementwisei(NumJArray b, DoubleBinaryOperator op) {
+    public NumJArray elementwisei(NumJArray b, FloatBinaryOperator op) {
         requireOperator(op);
         if (b == null) {
             throw new IllegalArgumentException("b must not be null");
         }
-        double[] other = b.broadcastTo(shape).toContiguousData();
+        float[] other = b.broadcastTo(shape).toContiguousData();
         int[] pos = positions();
         for (int i = 0; i < pos.length; i++) {
-            data[pos[i]] = op.applyAsDouble(data[pos[i]], other[i]);
+            data[pos[i]] = op.applyAsFloat(data[pos[i]], other[i]);
         }
         return this;
     }
@@ -3179,7 +3212,7 @@ public class NumJArray {
      * @param b the scalar
      * @return this array
      */
-    public NumJArray addi(double b) {
+    public NumJArray addi(float b) {
         return elementwisei(b, (x, y) -> x + y);
     }
 
@@ -3200,7 +3233,7 @@ public class NumJArray {
      * @param b the scalar
      * @return this array
      */
-    public NumJArray subi(double b) {
+    public NumJArray subi(float b) {
         return elementwisei(b, (x, y) -> x - y);
     }
 
@@ -3221,7 +3254,7 @@ public class NumJArray {
      * @param b the scalar
      * @return this array
      */
-    public NumJArray muli(double b) {
+    public NumJArray muli(float b) {
         return elementwisei(b, (x, y) -> x * y);
     }
 
@@ -3242,7 +3275,7 @@ public class NumJArray {
      * @param b the scalar
      * @return this array
      */
-    public NumJArray divi(double b) {
+    public NumJArray divi(float b) {
         return elementwisei(b, (x, y) -> x / y);
     }
 
@@ -3255,6 +3288,53 @@ public class NumJArray {
      */
     public NumJArray divi(NumJArray b) {
         return elementwisei(b, (x, y) -> x / y);
+    }
+
+    /**
+     * In-place element-wise square root.
+     * 
+     * @return this array
+     */
+    public NumJArray sqrti() {
+        return elementwisei(x -> (float) Math.sqrt(x));
+    }
+
+    /**
+     * In-place element-wise power.
+     * 
+     * @param b the exponent
+     * @return this array
+     */
+    public NumJArray powi(float b) {
+        return elementwisei(x -> (float) Math.pow(x, b));
+    }
+
+    /**
+     * In-place element-wise e^x.
+     * 
+     * @return this array
+     */
+    public NumJArray expi() {
+        return elementwisei(x -> (float) Math.exp(x));
+    }
+
+    /**
+     * In-place element-wise natural logarithm.
+     * 
+     * @return this array
+     */
+    public NumJArray logi() {
+        return elementwisei(x -> (float) Math.log(x));
+    }
+
+    /**
+     * In-place modulo by a scalar.
+     * 
+     * @param b the divisor
+     * @return this array
+     */
+    public NumJArray modi(float b) {
+        return elementwisei(x -> x % b);
     }
 
     /**
@@ -3276,7 +3356,7 @@ public class NumJArray {
      * @param value the value to store
      * @return this array
      */
-    public NumJArray fill(double value) {
+    public NumJArray fill(float value) {
         for (int p : positions()) data[p] = value;
         return this;
     }
@@ -3317,11 +3397,11 @@ public class NumJArray {
      * @return this array
      * @throws IllegalArgumentException if {@code mask} is null or cannot be broadcast to this shape
      */
-    public NumJArray putWhere(NumJArray mask, double value) {
+    public NumJArray putWhere(NumJArray mask, float value) {
         if (mask == null) {
             throw new IllegalArgumentException("mask must not be null");
         }
-        double[] m = mask.broadcastTo(shape).toContiguousData();
+        float[] m = mask.broadcastTo(shape).toContiguousData();
         int[] pos = positions();
         for (int i = 0; i < pos.length; i++) {
             if (m[i] != 0) data[pos[i]] = value;
@@ -3341,8 +3421,8 @@ public class NumJArray {
         if (mask == null || values == null) {
             throw new IllegalArgumentException("mask and values must not be null");
         }
-        double[] m = mask.broadcastTo(shape).toContiguousData();
-        double[] v = values.broadcastTo(shape).toContiguousData();
+        float[] m = mask.broadcastTo(shape).toContiguousData();
+        float[] v = values.broadcastTo(shape).toContiguousData();
         int[] pos = positions();
         for (int i = 0; i < pos.length; i++) {
             if (m[i] != 0) data[pos[i]] = v[i];
@@ -3359,7 +3439,7 @@ public class NumJArray {
      * @return this array
      * @throws IllegalArgumentException if {@code test} is null
      */
-    public NumJArray conditionalPut(DoublePredicate test, double value) {
+    public NumJArray conditionalPut(FloatPredicate test, float value) {
         if (test == null) {
             throw new IllegalArgumentException("test must not be null");
         }
@@ -3376,7 +3456,7 @@ public class NumJArray {
      * @return a new array of 1.0 where the test is true, otherwise 0.0
      * @throws IllegalArgumentException if {@code test} is null
      */
-    public NumJArray where(DoublePredicate test) {
+    public NumJArray where(FloatPredicate test) {
         if (test == null) {
             throw new IllegalArgumentException("test must not be null");
         }
@@ -3398,11 +3478,11 @@ public class NumJArray {
             throw new IllegalArgumentException("cond, x and y must not be null");
         }
         int[] outShape = broadcastShape(broadcastShape(cond.shape, x.shape), y.shape);
-        double[] c = cond.broadcastTo(outShape).toContiguousData();
-        double[] xs = x.broadcastTo(outShape).toContiguousData();
-        double[] ys = y.broadcastTo(outShape).toContiguousData();
+        float[] c = cond.broadcastTo(outShape).toContiguousData();
+        float[] xs = x.broadcastTo(outShape).toContiguousData();
+        float[] ys = y.broadcastTo(outShape).toContiguousData();
 
-        double[] out = new double[c.length];
+        float[] out = new float[c.length];
         for (int i = 0; i < out.length; i++) {
             out[i] = (c[i] != 0) ? xs[i] : ys[i];
         }
@@ -3418,7 +3498,7 @@ public class NumJArray {
      * @return a new array with the shape of {@code cond}
      * @throws IllegalArgumentException if {@code cond} is null
      */
-    public static NumJArray where(NumJArray cond, double x, double y) {
+    public static NumJArray where(NumJArray cond, float x, float y) {
         if (cond == null) {
             throw new IllegalArgumentException("cond must not be null");
         }
@@ -3453,7 +3533,7 @@ public class NumJArray {
      * @return the value
      * @throws IndexOutOfBoundsException if {@code flatIndex} is outside the array
      */
-    public double getFlat(int flatIndex) {
+    public float getFlat(int flatIndex) {
         return data[pointer(flatIndex)];
     }
 
@@ -3464,7 +3544,7 @@ public class NumJArray {
      * @param flatIndex the logical position; negative values count from the end
      * @throws IndexOutOfBoundsException if {@code flatIndex} is outside the array
      */
-    public void setFlat(double value, int flatIndex) {
+    public void setFlat(float value, int flatIndex) {
         data[pointer(flatIndex)] = value;
     }
 
@@ -3526,7 +3606,7 @@ public class NumJArray {
      * @throws IllegalArgumentException  if fewer coordinates than dimensions are given
      * @throws IndexOutOfBoundsException if a coordinate is outside a non-singleton dimension, or the array is empty
      */
-    public double broadcastGet(int... coordinates) {
+    public float broadcastGet(int... coordinates) {
         if (coordinates == null || coordinates.length < shape.length) {
             throw new IllegalArgumentException(
                 "Expected at least " + shape.length + " coordinates, got " + (coordinates == null ? 0 : coordinates.length));
@@ -3588,7 +3668,7 @@ public class NumJArray {
         if (shape.length == 0) return String.valueOf(data[offset]);
         if (size == 0) return "[]";
 
-        double[] flat = toContiguousData();
+        float[] flat = toContiguousData();
         String[] cells = new String[flat.length];
         int width = 0;
         for (int i = 0; i < flat.length; i++) {
@@ -3734,7 +3814,7 @@ public class NumJArray {
         }
     }
 
-    private static double[] requireLength(double[] data, int[] shape) {
+    private static float[] requireLength(float[] data, int[] shape) {
         if (data == null) {
             throw new IllegalArgumentException("data must not be null");
         }
@@ -3805,8 +3885,8 @@ public class NumJArray {
     }
 
     /** Always returns a fresh row-major copy of the logical values. Safe to modify. */
-    private double[] toContiguousData() {
-        double[] out = new double[size];
+    private float[] toContiguousData() {
+        float[] out = new float[size];
         if (size == 0) return out;
 
         if (isContiguous()) {
@@ -3832,14 +3912,14 @@ public class NumJArray {
     }
 
     /** Row-major logical values; may be the backing array itself, so never modify the result. */
-    private double[] readOnlyData() {
+    private float[] readOnlyData() {
         if (offset == 0 && data.length == size && isContiguous()) return data;
         return toContiguousData();
     }
 
     private int argFlat(boolean findMax) {
         requireNonEmpty(findMax ? "argMax" : "argMin");
-        double[] d = readOnlyData();
+        float[] d = readOnlyData();
         int best = 0;
         for (int i = 1; i < d.length; i++) {
             if (findMax ? d[i] > d[best] : d[i] < d[best]) best = i;
@@ -3886,7 +3966,7 @@ public class NumJArray {
     }
 
     /** Folds each lane along {@code axis} with {@code op}; {@code init == null} starts from the first element. */
-    private NumJArray reduceLanes(int axis, DoubleBinaryOperator op, Double init) {
+    private NumJArray reduceLanes(int axis, FloatBinaryOperator op, Float init) {
         int ax = normalizeAxis(axis);
         int len = shape[ax];
         int st = strides[ax];
@@ -3896,11 +3976,11 @@ public class NumJArray {
         }
 
         int[] lanes = laneOffsets(ax);
-        double[] out = new double[lanes.length];
+        float[] out = new float[lanes.length];
 
         for (int l = 0; l < lanes.length; l++) {
             int base = lanes[l];
-            double acc;
+            float acc;
             int k;
             if (init == null) {
                 acc = data[base];
@@ -3910,7 +3990,7 @@ public class NumJArray {
                 k = 0;
             }
             for (; k < len; k++) {
-                acc = op.applyAsDouble(acc, data[base + k * st]);
+                acc = op.applyAsFloat(acc, data[base + k * st]);
             }
             out[l] = acc;
         }
@@ -3927,14 +4007,14 @@ public class NumJArray {
         }
 
         int[] lanes = laneOffsets(ax);
-        double[] out = new double[lanes.length];
+        float[] out = new float[lanes.length];
 
         for (int l = 0; l < lanes.length; l++) {
             int base = lanes[l];
             int best = 0;
             for (int k = 1; k < len; k++) {
-                double cur = data[base + k * st];
-                double bestVal = data[base + best * st];
+                float cur = data[base + k * st];
+                float bestVal = data[base + best * st];
                 if (findMax ? cur > bestVal : cur < bestVal) best = k;
             }
             out[l] = best;
@@ -3980,14 +4060,14 @@ public class NumJArray {
         return out;
     }
 
-    private NumJArray broadcastOp(NumJArray b, DoubleBinaryOperator op) {
+    private NumJArray broadcastOp(NumJArray b, FloatBinaryOperator op) {
         if (b == null) {
             throw new IllegalArgumentException("b must not be null");
         }
 
         int[] outShape = broadcastShape(shape, b.shape);
         int n = sizeOf(outShape);
-        double[] result = new double[n];
+        float[] result = new float[n];
         if (n == 0) return new NumJArray(result, outShape);
 
         int[] sa = broadcastStrides(shape, strides, outShape);
@@ -3999,7 +4079,7 @@ public class NumJArray {
         int pb = b.offset;
 
         for (int i = 0; i < n; i++) {
-            result[i] = op.applyAsDouble(data[pa], b.data[pb]);
+            result[i] = op.applyAsFloat(data[pa], b.data[pb]);
             for (int d = nd - 1; d >= 0; d--) {
                 idx[d]++;
                 pa += sa[d];
@@ -4053,8 +4133,8 @@ public class NumJArray {
                 out.writeInt(dimension);
             }
 
-            for (double value : array.data) {
-                out.writeDouble(value);
+            for (float value : array.data) {
+                out.writeFloat(value);
             }
 
         } catch (IOException e) {
@@ -4109,10 +4189,10 @@ public class NumJArray {
                 throw new IOException("Invalid array shape", e);
             }
 
-            double[] data = new double[size];
+            float[] data = new float[size];
 
             for (int i = 0; i < size; i++) {
-                data[i] = in.readDouble();
+                data[i] = in.readFloat();
             }
 
             return new NumJArray(data, shape);
@@ -4169,9 +4249,9 @@ public class NumJArray {
 
             ByteBuffer buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
 
-            for (double value : array.data) {
+            for (float value : array.data) {
                 buffer.clear();
-                buffer.putDouble(value);
+                buffer.putFloat(value);
                 out.write(buffer.array());
             }
 
@@ -4310,7 +4390,7 @@ public class NumJArray {
 
             ByteOrder order = dtype.charAt(0) == '>' ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
 
-            double[] data = new double[size];
+            float[] data = new float[size];
             byte[] valueBytes = new byte[8];
             ByteBuffer valueBuffer = ByteBuffer.wrap(valueBytes).order(order);
 
@@ -4328,7 +4408,7 @@ public class NumJArray {
                 }
 
                 valueBuffer.position(0);
-                data[i] = valueBuffer.getDouble();
+                data[i] = valueBuffer.getFloat();
             }
 
             return new NumJArray(data, shape);
