@@ -24,23 +24,33 @@ With support for efficient array transformations, in-place arithmetic, and optim
 
 NumJ is designed to support memory-efficient neural network inference through its array operations and in-place mutation capabilities.
 
-The following benchmark evaluates a **76.55 Million Parameter Deep Network** (`16,384 -> 4,096 -> 2,048 -> 512 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
+The following benchmark evaluates a 990 Billion Parameter Deep Network** (`16,384 -> 32768 -> 12288 -> 4096 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
 
 ```text
 Initializing network...
-Network: 16384 -> 4096 -> 2048 -> 512 -> 10
-Parameters: 76557834
-Raw parameter storage: 584.09 MiB
-Warmup iterations: 5
-Timed iterations: 20
-Heap used before initialization: 3.14 MiB
-Heap used after initialization: 592.31 MiB
+Allocating Layer 1 (536M params)...
+Allocating Layer 2 (402M params)...
+Allocating Layer 3 (50M params)...
+Allocating Layer 4...
+Network: 16384 -> 32768 -> 12288 -> 4096 -> 10
+Parameters: 989945866
+Raw parameter storage: 3776.34 MiB
+Warmup iterations: 1
+Timed iterations: 5
+Heap used before initialization: 4.02 MiB
+Heap used after initialization: 3803.33 MiB
+Maximum JVM heap: 12288.00 MiB
+Output shape: [1, 10]
 
-===== NumJ Benchmark Metrics =====
-Average Inference Time : 57.553 ms
-Inferences Per Second  : 17.38
-GC Collections Timing  : 0
-GC Time Spent Timing   : 0 ms
+===== NumJ Metrics Output =====
+Total time: 2968.553 ms
+Average inference: 593.711 ms
+Inferences/second: 1.68
+Checksum: 2.501251935959
+Heap used after benchmark: 3811.50 MiB
+GC collections during timing: 0
+GC time during timing: 0 ms
+Output: 0.50025040, 0.50025022, 0.50024956, 0.50024855, 0.50024712, 0.50024527, 0.50024301, 0.50024033, 0.50023723, 0.50023377
 ```
 
 *No garbage collection activity was observed during the timed inference iterations. This indicates that the benchmark workload did not trigger garbage collection during the measurement window, although it does not imply that every NumJ operation is allocation-free.*
@@ -69,7 +79,7 @@ Add the NumJ dependency directly inside the `dependencies` block of your `build.
 
 ```groovy
 dependencies {
-    implementation 'com.github.AJ-1-code:NumJ:1.0.0'
+    implementation 'com.github.AJ-1-code:NumJ:1.0.1'
 }
 ```
 
@@ -126,7 +136,7 @@ NumJ provides a broad collection of multidimensional array operations, mathemati
 
 ### Matrix Primitives & Mathematical Activations
 *   `dot()`, `matMul()`, `outer()`, `trace()`, `diagonal()`, `inner()`
-*   AI Activations & Gradients: `relu()` / `reluD()`, `sigmoid()` / `sigmoidD()`, `tanh()` / `tanhD()`, `softmax()` / `softmaxAxis()`
+*   AI Activations & Gradients: `relu()` / `reluD()` / `relui()` , `sigmoid()` / `sigmoidD()`, `tanh()` / `tanhD()`, `softmax()` / `softmaxAxis()`
 
 ### Array Reductions & Statistics
 *   Global & Axis-Specific: `sum()`, `prod()`, `mean()`, `min()`, `max()`, `var()`, `std()`, `norm()`, `median()`, `percentile()`, `quantile()`, `cumSum()`, `cumProd()`
