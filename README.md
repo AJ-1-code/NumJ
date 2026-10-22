@@ -24,7 +24,7 @@ With support for efficient array transformations, in-place arithmetic, and optim
 
 NumJ is designed to support memory-efficient neural network inference through its array operations and in-place mutation capabilities.
 
-The following benchmark evaluates a 990 Billion Parameter Deep Network** (`16,384 -> 32768 -> 12288 -> 4096 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
+The following benchmark evaluates a 990 Million Parameter Deep Network** (`16,384 -> 32768 -> 12288 -> 4096 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
 
 ```text
 Initializing network...
