@@ -1,12 +1,9 @@
-package numj.array;
+package numj.core;
 
 import java.util.Arrays;
 import java.util.Random;
 
-import numj.core.NumJArray;
-import numj.core.Validator;
-
-public class Creation {
+public class creation {
 
     /**
      * Creates an array of zeros.

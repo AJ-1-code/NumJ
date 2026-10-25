@@ -2,7 +2,6 @@ package numj.core;
 import java.util.Arrays;
 import java.util.function.BiFunction;
 
-import numj.array.Creation;
 import numj.io.njio;
 import numj.io.npio;
 import numj.math.FloatBinaryOperator;
@@ -190,7 +189,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the shape is invalid
      */
     public static NumJArray zeros(int... shape) {
-        return Creation.zeros(shape);
+        return creation.zeros(shape);
     }
 
     /**
@@ -201,7 +200,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the shape is invalid
      */
     public static NumJArray ones(int... shape) {
-        return Creation.ones(shape);
+        return creation.ones(shape);
     }
 
     /**
@@ -213,7 +212,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if the shape is invalid
      */
     public static NumJArray full(float value, int... shape) {
-        return Creation.full(value, shape);
+        return creation.full(value, shape);
     }
 
     /**
@@ -224,7 +223,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code values} is null
      */
     public static NumJArray of(float... values) {
-        return Creation.of(values);
+        return creation.of(values);
     }
 
     /**
@@ -235,7 +234,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code rows} is null, or the rows are ragged
      */
     public static NumJArray of(float[][] rows) {
-        return Creation.of(rows);
+        return creation.of(rows);
     }
 
     /**
@@ -246,7 +245,7 @@ public class NumJArray {
      * @return a new 1-D array (empty if {@code stop <= 0})
      */
     public static NumJArray arange(float stop) {
-        return Creation.arange(0, stop, 1);
+        return creation.arange(0, stop, 1);
     }
 
     /**
@@ -258,7 +257,7 @@ public class NumJArray {
      * @return a new 1-D array (empty if {@code stop <= start})
      */
     public static NumJArray arange(float start, float stop) {
-        return Creation.arange(start, stop, 1);
+        return creation.arange(start, stop, 1);
     }
 
     /**
@@ -272,7 +271,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code step} is 0 or not finite
      */
     public static NumJArray arange(float start, float stop, float step) {
-        return Creation.arange(start, stop, step);
+        return creation.arange(start, stop, step);
     }
 
     /**
@@ -287,7 +286,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code num} is negative
      */
     public static NumJArray linspace(float start, float stop, int num) {
-        return Creation.linspace(start, stop, num);
+        return creation.linspace(start, stop, num);
     }
 
     /**
@@ -298,7 +297,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code n} is negative
      */
     public static NumJArray identity(int n) {
-        return Creation.identity(n);
+        return creation.identity(n);
     }
 
     /**
@@ -311,7 +310,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code stdDev} is negative or the shape is invalid
      */
     public static NumJArray normal(float mean, float stdDev, int... shape) {
-        return Creation.normal(mean, stdDev, shape);
+        return creation.normal(mean, stdDev, shape);
     }
 
     /**
@@ -324,7 +323,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code high < low} or the shape is invalid
      */
     public static NumJArray uniform(float low, float high, int... shape) {
-        return Creation.uniform(low, high, shape);
+        return creation.uniform(low, high, shape);
     }
 
      /**
@@ -335,7 +334,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code n} is negative
      */
     public static NumJArray eye(int n) {
-        return Creation.eye(n, n, 0);
+        return creation.eye(n, n, 0);
     }
 
     /**
@@ -347,7 +346,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if a size is negative
      */
     public static NumJArray eye(int n, int m) {
-        return Creation.eye(n, m, 0);
+        return creation.eye(n, m, 0);
     }
 
     /**
@@ -360,7 +359,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if a size is negative
      */
     public static NumJArray eye(int n, int m, int k) {
-        return Creation.eye(n, m, k);
+        return creation.eye(n, m, k);
     }
 
     /**

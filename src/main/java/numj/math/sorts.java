@@ -2,7 +2,7 @@ package numj.math;
 
 import java.util.Arrays;
 
-import numj.array.Creation;
+import numj.core.Creation;
 import numj.core.NumJArray;
 
 public class sorts {
@@ -70,7 +70,7 @@ public class sorts {
      */
     public static NumJArray argsort(NumJArray array, int axis) {
         int ax = array.normalizeAxis(axis);
-        NumJArray out = Creation.zeros(array.shape);
+        NumJArray out = creation.zeros(array.shape);
         int len = array.shape[ax];
         int srcStride = array.strides[ax];
         int dstStride = out.strides[ax];
