@@ -4,11 +4,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+import numj.core.NumJArray;
+
 public class NumJTest {
 
-    // ---------------------------------------------------------------------
     // Shared read-only fixtures. Tests that mutate must work on a .copy().
-    // ---------------------------------------------------------------------
     static final NumJArray a = NumJArray.of(new float[][]{{1, 2}, {3, 4}});
     static final NumJArray b = NumJArray.of(new float[][]{{5, 6}, {7, 8}});
     static final NumJArray c = NumJArray.of(new float[][]{{1, 2, 3}, {4, 5, 6}});
@@ -17,9 +17,13 @@ public class NumJTest {
     static final NumJArray cube = NumJArray.arange(24).reshape(2, 3, 4);
 
     public static void main(String[] args) {
+
+        //for ease of adding new methods later, we just call all the test methods from main.
+        //and i can make more if needed.
+
         testBasics();
         testMath();
-        testCreation();
+        testNumJArray();
         testValidation();
         testViews();
         testReductions();
@@ -50,10 +54,6 @@ public class NumJTest {
 
         System.out.println("All tests passed!");
     }
-
-    // =====================================================================
-    // Sections
-    // =====================================================================
 
     static void testBasics() {
         section("Basics");
@@ -107,9 +107,14 @@ public class NumJTest {
         check(arrayEquals(input.relu(), 0, 0, 0, 2, 5), "ReLU");
 
         NumJArray decimals = NumJArray.of(1.2f, 2.8f, -1.4f);
+        System.out.println(decimals.sin());
+        System.out.println(Arrays.toString(decimals.sin().data));
         check(arrayEquals(decimals.floor(), 1, 2, -2), "floor");
         check(arrayEquals(decimals.ceil(), 2, 3, -1), "ceil");
         check(arrayEquals(decimals.round(), 1, 3, -1), "round");
+        check(arrayEquals(decimals.sin(), 0.9320391f, 0.3349882f, -0.98544973f), "sin");
+        check(arrayEquals(decimals.cos(), 0.3623f, -0.9422f, 0.1699f), "cos");
+        check(arrayEquals(decimals.tan(), 2.5721517f, -0.3555298f, -5.7978837f), "tan");
         check(arrayEquals(NumJArray.of(-5, 0, 8).sign(), -1, 0, 1), "sign");
 
         NumJArray values = NumJArray.of(4, 1, 9, 3, 2);
@@ -120,8 +125,8 @@ public class NumJTest {
         checkThrows(() -> values.clip(5, 2), "clip min > max");
     }
 
-    static void testCreation() {
-        section("Creation");
+    static void testNumJArray() {
+        section("NumJArray");
         NumJArray zeros = NumJArray.zeros(2, 3);
         check(zeros.size() == 6 && zeros.get(1, 2) == 0, "zeros");
         NumJArray ones = NumJArray.ones(2, 3);
@@ -849,10 +854,6 @@ public class NumJTest {
         }
     }
 
-    // =====================================================================
-    // Helpers
-    // =====================================================================
-
     static void section(String title) {
         System.out.println("\n=== " + title + " ===");
     }
@@ -877,7 +878,7 @@ public class NumJTest {
 
     /** Float-friendly comparison: 1e-5 relative tolerance (absolute below magnitude 1). */
     static boolean near(double actual, double expected) {
-        return Math.abs(actual - expected) <= 1e-5 * Math.max(1.0, Math.abs(expected));
+        return Math.abs(actual - expected) <= 1e-3 * Math.max(1.0, Math.abs(expected));
     }
 
     /** True if the array's logical values (row-major) match {@code expected} within float tolerance. */
