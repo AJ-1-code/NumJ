@@ -1,6 +1,7 @@
 # NumJ
 
 [![](https://jitpack.io/v/AJ-1-code/NumJ.svg)](https://jitpack.io/#AJ-1-code/NumJ)
+[![License: Custom MIT-Based](https://shields.io)](LICENSE)
 
 **NumJ** is a high-performance, feature-rich multidimensional array and linear algebra library built entirely in pure Java. Designed with artificial intelligence and deep learning workflows in mind, NumJ brings NumPy-inspired multidimensional array capabilities, stride-based views, and broadcasting directly to the Java Virtual Machine.
 
@@ -24,7 +25,7 @@ With support for efficient array transformations, in-place arithmetic, and optim
 
 NumJ is designed to support memory-efficient neural network inference through its array operations and in-place mutation capabilities.
 
-The following benchmark evaluates a 990 Million Parameter Deep Network** (`16,384 -> 32768 -> 12288 -> 4096 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
+The following benchmark evaluates a 990 Million Parameter Deep Network (`16,384 -> 32768 -> 12288 -> 4096 -> 10`) across 20 timed inference iterations using single-threaded sequential execution.
 
 ```text
 Initializing network...
@@ -111,6 +112,17 @@ public class Main {
     }
 }
 ```
+
+---
+
+## License & Attribution
+
+This project is licensed under a **Custom MIT-Based License** - see the [LICENSE](LICENSE) file for details. 
+
+### Mandatory Attribution Requirement
+Any distributed software that incorporates, uses, or includes code from this library must include the following acknowledgment in its documentation, credits, About section, or another reasonably accessible location:
+
+> *"This program includes code using NumJ library"*
 
 ---
 
