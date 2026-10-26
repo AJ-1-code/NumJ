@@ -283,34 +283,34 @@ public class lina {
         if (a.shape.length == 0 || b.shape.length == 0) {
             throw new IllegalArgumentException("matMul does not accept scalars; use mul instead");
         }
-
+    
         boolean aVec = a.shape.length == 1;
         boolean bVec = b.shape.length == 1;
         NumJArray a2 = aVec ? a.expandDims(0) : a;
         NumJArray b2 = bVec ? b.expandDims(1) : b;
-
+    
         int na = a2.shape.length;
         int nb = b2.shape.length;
         int m = a2.shape[na - 2];
         int k = a2.shape[na - 1];
         int p = b2.shape[nb - 1];
-
+    
         if (k != b2.shape[nb - 2]) {
             throw new IllegalArgumentException(
                 "Inner dimensions do not match for matMul: " + Arrays.toString(a.shape) + " x " + Arrays.toString(b.shape));
         }
-
+    
         int[] batch = NumJArray.broadcastShape(
             Arrays.copyOfRange(a2.shape, 0, na - 2),
             Arrays.copyOfRange(b2.shape, 0, nb - 2));
         int nBatch = batch.length;
-
+        
         NumJArray aB = a2.broadcastTo(NumJArray.concatInts(batch, m, k));
         NumJArray bB = b2.broadcastTo(NumJArray.concatInts(batch, k, p));
-
+        
         int count = Validator.sizeOf(batch);
         float[] out = new float[count * m * p];
-
+        
         int[] idx = new int[nBatch];
         int baseA = aB.offset;
         int baseB = bB.offset;
@@ -318,83 +318,122 @@ public class lina {
         int aCol = aB.strides[nBatch + 1];
         int bRow = bB.strides[nBatch];
         int bCol = bB.strides[nBatch + 1];
-
+        
+        final float[] A = aB.data;
+        final float[] B = bB.data;
+        
+        final int lanes = MATMUL_SPECIES.length();
+        final int tileW = lanes * 2;
+        final boolean useSimd = (bCol == 1 && p >= tileW);
+        final int vecBound = useSimd ? (p / tileW) * tileW : 0;
+        final int rowBound = (m / 4) * 4;
+        
         for (int n = 0; n < count; n++) {
             int outBase = n * m * p;
-
-            for (int i = 0; i < m; i++) {
-                int rowA = baseA + i * aRow;
-                int rowOut = outBase + i * p;
-                        
-                if (bCol == 1 && p >= MATMUL_SPECIES.length() * 4) {
-                    int lanes = MATMUL_SPECIES.length();
-                    int tileWidth = lanes * 4;
-                    int vectorBound = (p / tileWidth) * tileWidth;
+        
+            if (useSimd) {
+                final FloatVector zero = FloatVector.zero(MATMUL_SPECIES);
+            
+                // SIMD path: j0 outer so a strip of B stays hot in cache,
+                // 4 rows of A at a time so each B load feeds 4 FMAs per vector.
+                for (int j0 = 0; j0 < vecBound; j0 += tileW) {
+                    int i = 0;
                 
-                    // SIMD fast path: four independent vector accumulators.
-                    for (int j0 = 0; j0 < vectorBound; j0 += tileWidth) {
-                        FloatVector acc0 = FloatVector.zero(MATMUL_SPECIES);
-                        FloatVector acc1 = FloatVector.zero(MATMUL_SPECIES);
-                        FloatVector acc2 = FloatVector.zero(MATMUL_SPECIES);
-                        FloatVector acc3 = FloatVector.zero(MATMUL_SPECIES);
+                    for (; i < rowBound; i += 4) {
+                        int a0 = baseA + i * aRow;
+                        int a1 = a0 + aRow;
+                        int a2i = a1 + aRow;
+                        int a3 = a2i + aRow;
+                    
+                        FloatVector c00 = zero, c01 = zero,
+                                    c10 = zero, c11 = zero,
+                                    c20 = zero, c21 = zero,
+                                    c30 = zero, c31 = zero;
                     
                         for (int kk = 0; kk < k; kk++) {
-                            float valA = aB.data[rowA + kk * aCol];
-                            int rowB = baseB + kk * bRow + j0;
+                            int bi = baseB + kk * bRow + j0;
+                            FloatVector b0 = FloatVector.fromArray(MATMUL_SPECIES, B, bi);
+                            FloatVector b1 = FloatVector.fromArray(MATMUL_SPECIES, B, bi + lanes);
+                            int ka = kk * aCol;
                         
-                            acc0 = acc0.add(
-                                    FloatVector.fromArray(MATMUL_SPECIES, bB.data, rowB)
-                                            .mul(valA));
-                            
-                            acc1 = acc1.add(
-                                    FloatVector.fromArray(
-                                            MATMUL_SPECIES, bB.data, rowB + lanes)
-                                            .mul(valA));
-                                    
-                            acc2 = acc2.add(
-                                    FloatVector.fromArray(
-                                            MATMUL_SPECIES, bB.data, rowB + 2 * lanes)
-                                            .mul(valA));
-                                    
-                            acc3 = acc3.add(
-                                    FloatVector.fromArray(
-                                            MATMUL_SPECIES, bB.data, rowB + 3 * lanes)
-                                            .mul(valA));
+                            FloatVector x = FloatVector.broadcast(MATMUL_SPECIES, A[a0 + ka]);
+                            c00 = b0.fma(x, c00);
+                            c01 = b1.fma(x, c01);
+                        
+                            x = FloatVector.broadcast(MATMUL_SPECIES, A[a1 + ka]);
+                            c10 = b0.fma(x, c10);
+                            c11 = b1.fma(x, c11);
+                        
+                            x = FloatVector.broadcast(MATMUL_SPECIES, A[a2i + ka]);
+                            c20 = b0.fma(x, c20);
+                            c21 = b1.fma(x, c21);
+                        
+                            x = FloatVector.broadcast(MATMUL_SPECIES, A[a3 + ka]);
+                            c30 = b0.fma(x, c30);
+                            c31 = b1.fma(x, c31);
                         }
                     
-                        acc0.intoArray(out, rowOut + j0);
-                        acc1.intoArray(out, rowOut + j0 + lanes);
-                        acc2.intoArray(out, rowOut + j0 + 2 * lanes);
-                        acc3.intoArray(out, rowOut + j0 + 3 * lanes);
+                        int o = outBase + i * p + j0;
+                        c00.intoArray(out, o);
+                        c01.intoArray(out, o + lanes);
+                        c10.intoArray(out, o + p);
+                        c11.intoArray(out, o + p + lanes);
+                        c20.intoArray(out, o + 2 * p);
+                        c21.intoArray(out, o + 2 * p + lanes);
+                        c30.intoArray(out, o + 3 * p);
+                        c31.intoArray(out, o + 3 * p + lanes);
                     }
                 
-                    // Scalar tail for columns not covered by complete vector tiles.
-                    for (int j = vectorBound; j < p; j++) {
-                        float sum = 0f;
+                    // Leftover rows (m % 4), one at a time.
+                    for (; i < m; i++) {
+                        int a0 = baseA + i * aRow;
+                        FloatVector c0 = zero, c1 = zero;
                     
                         for (int kk = 0; kk < k; kk++) {
-                            float valA = aB.data[rowA + kk * aCol];
-                            int rowB = baseB + kk * bRow;
-                        
-                            sum += valA * bB.data[rowB + j];
+                            int bi = baseB + kk * bRow + j0;
+                            FloatVector x = FloatVector.broadcast(MATMUL_SPECIES, A[a0 + kk * aCol]);
+                            c0 = FloatVector.fromArray(MATMUL_SPECIES, B, bi).fma(x, c0);
+                            c1 = FloatVector.fromArray(MATMUL_SPECIES, B, bi + lanes).fma(x, c1);
                         }
                     
-                        out[rowOut + j] = sum;
+                        int o = outBase + i * p + j0;
+                        c0.intoArray(out, o);
+                        c1.intoArray(out, o + lanes);
                     }
-                } else {
-                    // Original general-stride fallback.
+                }
+            
+                // Scalar tail: columns not covered by full vector tiles, all rows.
+                if (vecBound < p) {
+                    for (int i = 0; i < m; i++) {
+                        int rowA = baseA + i * aRow;
+                        int rowOut = outBase + i * p;
+                    
+                        for (int j = vecBound; j < p; j++) {
+                            float sum = 0f;
+                            for (int kk = 0; kk < k; kk++) {
+                                sum += A[rowA + kk * aCol] * B[baseB + kk * bRow + j];
+                            }
+                            out[rowOut + j] = sum;
+                        }
+                    }
+                }
+            } else {
+                // General-stride fallback.
+                for (int i = 0; i < m; i++) {
+                    int rowA = baseA + i * aRow;
+                    int rowOut = outBase + i * p;
+                
                     for (int kk = 0; kk < k; kk++) {
-                        float valA = aB.data[rowA + kk * aCol];
+                        float valA = A[rowA + kk * aCol];
                         int rowB = baseB + kk * bRow;
                     
                         for (int j = 0; j < p; j++) {
-                            out[rowOut + j] +=
-                                    valA * bB.data[rowB + j * bCol];
+                            out[rowOut + j] += valA * B[rowB + j * bCol];
                         }
                     }
                 }
             }
-
+        
             for (int d = nBatch - 1; d >= 0; d--) {
                 idx[d]++;
                 baseA += aB.strides[d];
@@ -405,13 +444,13 @@ public class lina {
                 idx[d] = 0;
             }
         }
-
+    
         int[] outShape = new int[nBatch + (aVec ? 0 : 1) + (bVec ? 0 : 1)];
         System.arraycopy(batch, 0, outShape, 0, nBatch);
         int pos = nBatch;
         if (!aVec) outShape[pos++] = m;
         if (!bVec) outShape[pos] = p;
-
+    
         return new NumJArray(out, outShape);
     }
 
