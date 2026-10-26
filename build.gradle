@@ -12,7 +12,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -45,6 +45,28 @@ tasks.register('runNumJTest', JavaExec) {
     mainClass = 'numj.NumJTest'
 }
 
+tasks.register('runNumJBench', JavaExec) {
+    group = 'verification'
+    description = 'Runs the NumJ benchmark.'
+
+    dependsOn testClasses
+
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'numj.NumJBench'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--add-modules', 'jdk.incubator.vector']
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs += ['--add-modules', 'jdk.incubator.vector']
+}
+
+test {
+    jvmArgs += ["--add-modules", "jdk.incubator.vector"]
 }

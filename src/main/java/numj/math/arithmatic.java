@@ -3,6 +3,7 @@ package numj.math;
 import java.util.Arrays;
 
 import numj.core.NumJArray;
+import numj.core.NumJSIMD;
 import numj.core.Validator;
 
 public class arithmatic {
@@ -33,27 +34,23 @@ public class arithmatic {
     }
 
     public static NumJArray abs(NumJArray a) {
-        return map(a, Math::abs);
+        return NumJSIMD.elementwise(a, NumJSIMD.ABS);
     }
 
     public static NumJArray neg(NumJArray a) {
-        return map(a, x -> -x);
+        return NumJSIMD.elementwise(a, NumJSIMD.NEG);
     }
 
     public static NumJArray sqrt(NumJArray a) {
-        return map(a, x -> (float) Math.sqrt(x));
-    }
-
-    public static NumJArray pow(NumJArray a, float power) {
-        return map(a, x -> (float) Math.pow(x, power));
+        return NumJSIMD.elementwise(a, NumJSIMD.SQRT);
     }
 
     public static NumJArray exp(NumJArray a) {
-        return map(a, x -> (float) Math.exp(x));
+        return NumJSIMD.elementwise(a, NumJSIMD.EXP);
     }
 
     public static NumJArray log(NumJArray a) {
-        return map(a, x -> (float) Math.log(x));
+        return NumJSIMD.elementwise(a, NumJSIMD.LOG);
     }
 
     public static NumJArray floor(NumJArray a) {
@@ -72,55 +69,31 @@ public class arithmatic {
         return map(a, Math::signum);
     }
 
-    public static NumJArray sin(NumJArray a) {
-        return map(a, x -> (float) Math.sin(x));
-    }
-
-    public static NumJArray cos(NumJArray a) {
-        return map(a, x -> (float) Math.cos(x));
-    }
-
-    public static NumJArray tan(NumJArray a) {
-        return map(a, x -> (float) Math.tan(x));
-    }
-
-    public static NumJArray asin(NumJArray a) {
-        return map(a, x -> (float) Math.asin(x));
-    }
-
-    public static NumJArray acos(NumJArray a) {
-        return map(a, x -> (float) Math.acos(x));
-    }
-
-    public static NumJArray atan(NumJArray a) {
-        return map(a, x -> (float) Math.atan(x));
-    }
-
-    public static NumJArray atan2(NumJArray a) {
-        return map(a, x -> (float) Math.atan2(x));
-    }
-
     public static NumJArray add(NumJArray a, float b) {
-        return map(a, x -> x + b);
+        return NumJSIMD.elementwise(a, b, NumJSIMD.ADD);
     }
 
     public static NumJArray sub(NumJArray a, float b) {
-        return map(a, x -> x - b);
+        return NumJSIMD.elementwise(a, b, NumJSIMD.SUB);
     }
 
     public static NumJArray mul(NumJArray a, float b) {
-        return map(a, x -> x * b);
+        return NumJSIMD.elementwise(a, b, NumJSIMD.MUL);
     }
 
     public static NumJArray div(NumJArray a, float b) {
-        return map(a, x -> x / b);
+        return NumJSIMD.elementwise(a, b, NumJSIMD.DIV);
+    }
+
+    public static NumJArray pow(NumJArray a, float power) {
+        return NumJSIMD.elementwise(a, power, NumJSIMD.POW);
     }
 
     public static NumJArray clip(NumJArray a, float min, float max) {
         if (min > max) {
             throw new IllegalArgumentException("min must be <= max");
         }
-        return map(a, x -> Math.max(min, Math.min(max, x)));
+        return NumJSIMD.elementwise(a, min, NumJSIMD.CLIP, max);
     }
 
     public static NumJArray mod(NumJArray a, float b) {
@@ -128,18 +101,34 @@ public class arithmatic {
     }
 
     public static NumJArray add(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.ADD);
+        }
         return a.broadcastOp(b, (x, y) -> x + y);
     }
 
     public static NumJArray sub(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.SUB);
+        }
         return a.broadcastOp(b, (x, y) -> x - y);
     }
 
     public static NumJArray mul(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.MUL);
+        }
         return a.broadcastOp(b, (x, y) -> x * y);
     }
 
     public static NumJArray div(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.DIV);
+        }
         return a.broadcastOp(b, (x, y) -> x / y);
     }
 
@@ -148,14 +137,22 @@ public class arithmatic {
     }
 
     public static NumJArray equal(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.EQUAL);
+        }
         return a.broadcastOp(b, (x, y) -> flag(x == y));
     }
 
     public static NumJArray equal(NumJArray a, float b) {
-        return map(a, x -> flag(x == b));
+        return NumJSIMD.elementwise(a, b, NumJSIMD.EQUAL);
     }
 
     public static NumJArray notEqual(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.NOT_EQUAL);
+        }
         return a.broadcastOp(b, (x, y) -> flag(x != y));
     }
 
@@ -168,7 +165,7 @@ public class arithmatic {
     }
 
     public static NumJArray greater(NumJArray a, float b) {
-        return map(a, x -> flag(x > b));
+        return NumJSIMD.elementwise(a, b, NumJSIMD.GREATER);
     }
 
     public static NumJArray greaterEqual(NumJArray a, NumJArray b) {
@@ -184,7 +181,7 @@ public class arithmatic {
     }
 
     public static NumJArray less(NumJArray a, float b) {
-        return map(a, x -> flag(x < b));
+        return NumJSIMD.elementwise(a, b, NumJSIMD.LESS);
     }
 
     public static NumJArray lessEqual(NumJArray a, NumJArray b) {
@@ -288,6 +285,10 @@ public class arithmatic {
     }
 
     public static NumJArray maximum(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.MAXIMUM);
+        }
         return a.broadcastOp(b, Math::max);
     }
 
@@ -296,6 +297,10 @@ public class arithmatic {
     }
 
     public static NumJArray minimum(NumJArray a, NumJArray b) {
+        int[] outShape = broadcastShape(a.shape, b.shape);
+        if (Arrays.equals(outShape, a.shape)) {
+            return NumJSIMD.elementwise(a, b, NumJSIMD.MINIMUM);
+        }
         return a.broadcastOp(b, Math::min);
     }
 
@@ -357,51 +362,51 @@ public class arithmatic {
     }
 
     public static NumJArray addi(NumJArray a, float b) {
-        return elementwisei(a, b, (x, y) -> x + y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.ADD);
     }
 
     public static NumJArray addi(NumJArray a, NumJArray b) {
-        return elementwisei(a, b, (x, y) -> x + y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.ADD);
     }
 
     public static NumJArray subi(NumJArray a, float b) {
-        return elementwisei(a, b, (x, y) -> x - y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.SUB);
     }
 
     public static NumJArray subi(NumJArray a, NumJArray b) {
-        return elementwisei(a, b, (x, y) -> x - y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.SUB);
     }
 
     public static NumJArray muli(NumJArray a, float b) {
-        return elementwisei(a, b, (x, y) -> x * y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.MUL);
     }
 
     public static NumJArray muli(NumJArray a, NumJArray b) {
-        return elementwisei(a, b, (x, y) -> x * y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.MUL);
     }
 
     public static NumJArray divi(NumJArray a, float b) {
-        return elementwisei(a, b, (x, y) -> x / y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.DIV);
     }
 
     public static NumJArray divi(NumJArray a, NumJArray b) {
-        return elementwisei(a, b, (x, y) -> x / y);
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.DIV);
     }
 
     public static NumJArray sqrti(NumJArray a) {
-        return elementwisei(a, x -> (float) Math.sqrt(x));
+        return NumJSIMD.elementwisei(a, NumJSIMD.SQRT);
     }
 
     public static NumJArray powi(NumJArray a, float b) {
-        return elementwisei(a, x -> (float) Math.pow(x, b));
+        return NumJSIMD.elementwisei(a, b, NumJSIMD.POW);
     }
 
     public static NumJArray expi(NumJArray a) {
-        return elementwisei(a, x -> (float) Math.exp(x));
+        return NumJSIMD.elementwisei(a, NumJSIMD.EXP);
     }
 
     public static NumJArray logi(NumJArray a) {
-        return elementwisei(a, x -> (float) Math.log(x));
+        return NumJSIMD.elementwisei(a, NumJSIMD.LOG);
     }
 
     public static NumJArray modi(NumJArray a, float b) {

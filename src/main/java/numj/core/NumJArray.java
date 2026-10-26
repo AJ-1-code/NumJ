@@ -14,6 +14,7 @@ import numj.math.stat;
 import numj.math.trig;
 import numj.ml.activation;
 
+
 /**
  * A small, NumPy-style N-dimensional array of {@code float}s.
  * 
@@ -305,7 +306,7 @@ public class NumJArray {
      *
      * @param mean   the mean of the distribution
      * @param stdDev the standard deviation; must be non-negative
-     * @param shape  the size of each dimension
+     * @param shape  the size of each
      * @return a new contiguous array of random samples
      * @throws IllegalArgumentException if {@code stdDev} is negative or the shape is invalid
      */

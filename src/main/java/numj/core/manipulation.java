@@ -1,7 +1,7 @@
 package numj.core;
 
 import java.util.Arrays;
-import numj.array.Creation;
+
 import numj.core.NumJArray.CoordinateFunction;
 
 
@@ -307,7 +307,7 @@ public class manipulation {
 
         int[] newShape = a.shape.clone();
         newShape[ax] = a.shape[ax] + b.shape[ax];
-        NumJArray out = Creation.zeros(newShape);
+        NumJArray out = creation.zeros(newShape);
 
         out.sliceAxis(ax, 0, a.shape[ax]).assign(a);
         out.sliceAxis(ax, a.shape[ax], newShape[ax]).assign(b);
@@ -337,7 +337,7 @@ public class manipulation {
             newShape[i] = (i == ax) ? 2 : a.shape[src++];
         }
 
-        NumJArray out = Creation.zeros(newShape);
+        NumJArray out = creation.zeros(newShape);
         out.select(ax, 0).assign(a);
         out.select(ax, 1).assign(b);
         return out;
@@ -538,7 +538,7 @@ public class manipulation {
 
         int[] newShape = array.shape.clone();
         newShape[ax] = indices.length;
-        NumJArray out = Creation.zeros(newShape);
+        NumJArray out = creation.zeros(newShape);
         for (int i = 0; i < picked.length; i++) {
             out.select(ax, i).assign(array.select(ax, picked[i]));
         }
@@ -746,7 +746,7 @@ public class manipulation {
             newShape[d] = array.shape[d] + before + after;
         }
 
-        NumJArray result = Creation.zeros(newShape);
+        NumJArray result = creation.zeros(newShape);
         int totalElements = Validator.sizeOf(array.shape);
         int[] srcIdx = new int[nd];
         int[] destIdx = new int[nd];

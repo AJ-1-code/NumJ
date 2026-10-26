@@ -2,7 +2,7 @@ package numj.math;
 
 import java.util.Arrays;
 
-import numj.core.Creation;
+import numj.core.creation;
 import numj.core.NumJArray;
 
 public class sorts {

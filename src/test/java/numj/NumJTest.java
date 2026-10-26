@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 
 import numj.core.NumJArray;
+import numj.math.arithmatic;
 
 public class NumJTest {
 
@@ -15,14 +16,14 @@ public class NumJTest {
     static final NumJArray ct = c.transpose();                       // [[1,4],[2,5],[3,6]] view
     static final NumJArray d = NumJArray.of(0, 1, 2, 3, 4, 5);
     static final NumJArray cube = NumJArray.arange(24).reshape(2, 3, 4);
-
     public static void main(String[] args) {
 
-        //for ease of adding new methods later, we just call all the test methods from main.
-        //and i can make more if needed.
+        // for ease of adding new methods later, we just call all the test methods from main.
+        // and i can make more if needed.
 
         testBasics();
         testMath();
+        testTrig();
         testNumJArray();
         testValidation();
         testViews();
@@ -124,6 +125,131 @@ public class NumJTest {
         check(arrayEquals(NumJArray.of(-5f, 0.5f, 9f).clip(0, 1), 0f, 0.5f, 1f), "clip floats");
         checkThrows(() -> values.clip(5, 2), "clip min > max");
     }
+
+    static void testTrig() {
+    section("Trigonometry");
+
+    NumJArray angles = NumJArray.of(0f, (float) (Math.PI / 6),(float) (Math.PI / 4), (float) (Math.PI / 3));
+
+    // Basic trigonometric functions
+    check(arrayEquals(angles.sin(),0f, 0.5f, (float) Math.sqrt(2) / 2f, (float) Math.sqrt(3) / 2f),"sin");
+
+    check(arrayEquals(angles.cos(), 1f, (float) Math.sqrt(3) / 2f, (float) Math.sqrt(2) / 2f, 0.5f),"cos");
+
+    check(arrayEquals(angles.tan(),0f, 1f / (float) Math.sqrt(3), 1f, (float) Math.sqrt(3)),"tan");
+
+    // Hyperbolic functions
+    NumJArray values = NumJArray.of(-1f, 0f, 1f);
+
+    check(arrayEquals(values.sinh(),
+            (float) Math.sinh(-1), 0f, (float) Math.sinh(1)),
+            "sinh");
+
+    check(arrayEquals(values.cosh(),
+            (float) Math.cosh(-1), 1f, (float) Math.cosh(1)),
+            "cosh");
+
+    check(arrayEquals(values.tanh(),
+            (float) Math.tanh(-1), 0f, (float) Math.tanh(1)),
+            "tanh");
+
+    // Inverse trigonometric functions
+    NumJArray unitValues = NumJArray.of(-1f, -0.5f, 0f, 0.5f, 1f);
+
+    check(arrayEquals(unitValues.asin(),
+            (float) Math.asin(-1), (float) Math.asin(-0.5),
+            0f, (float) Math.asin(0.5), (float) Math.asin(1)),
+            "asin");
+
+    check(arrayEquals(unitValues.acos(),
+            (float) Math.acos(-1), (float) Math.acos(-0.5),
+            (float) Math.acos(0), (float) Math.acos(0.5), (float) Math.acos(1)),
+            "acos");
+
+    check(arrayEquals(unitValues.atan(),
+            (float) Math.atan(-1), (float) Math.atan(-0.5),
+            0f, (float) Math.atan(0.5), (float) Math.atan(1)),
+            "atan");
+
+    // atan2: y.atan2(x)
+    NumJArray y = NumJArray.of(0f, 1f, 0f, -1f);
+    NumJArray x = NumJArray.of(1f, 0f, -1f, 0f);
+
+    check(arrayEquals(y.atan2(x),
+            0f, (float) (Math.PI / 2), (float) Math.PI, (float) (-Math.PI / 2)),
+            "atan2");
+
+    // In-place variants: ensure values are modified correctly
+    NumJArray inPlace = angles.copy();
+    inPlace.sini();
+    check(arrayEquals(inPlace,
+            0f, 0.5f, (float) Math.sqrt(2) / 2f, (float) Math.sqrt(3) / 2f),
+            "sini");
+
+    inPlace = angles.copy();
+    inPlace.cosi();
+    check(arrayEquals(inPlace,
+            1f, (float) Math.sqrt(3) / 2f, (float) Math.sqrt(2) / 2f, 0.5f),
+            "cosi");
+
+    inPlace = angles.copy();
+    inPlace.tani();
+    check(arrayEquals(inPlace,
+            0f, 1f / (float) Math.sqrt(3), 1f, (float) Math.sqrt(3)),
+            "tani");
+
+    inPlace = values.copy();
+    inPlace.sinhi();
+    check(arrayEquals(inPlace,
+            (float) Math.sinh(-1), 0f, (float) Math.sinh(1)),
+            "sinhi");
+
+    inPlace = values.copy();
+    inPlace.coshi();
+    check(arrayEquals(inPlace,
+            (float) Math.cosh(-1), 1f, (float) Math.cosh(1)),
+            "coshi");
+
+    inPlace = values.copy();
+    inPlace.tanhi();
+    check(arrayEquals(inPlace,
+            (float) Math.tanh(-1), 0f, (float) Math.tanh(1)),
+            "tanhi");
+
+    inPlace = unitValues.copy();
+    inPlace.asini();
+    check(arrayEquals(inPlace,
+            (float) Math.asin(-1), (float) Math.asin(-0.5),
+            0f, (float) Math.asin(0.5), (float) Math.asin(1)),
+            "asini");
+
+    inPlace = unitValues.copy();
+    inPlace.acosi();
+    check(arrayEquals(inPlace,
+            (float) Math.acos(-1), (float) Math.acos(-0.5),
+            (float) Math.acos(0), (float) Math.acos(0.5), (float) Math.acos(1)),
+            "acosi");
+
+    inPlace = unitValues.copy();
+    inPlace.atani();
+    check(arrayEquals(inPlace,
+            (float) Math.atan(-1), (float) Math.atan(-0.5),
+            0f, (float) Math.atan(0.5), (float) Math.atan(1)),
+            "atani");
+
+    // atan2i mutates the receiver (y)
+    inPlace = y.copy();
+    inPlace.atan2i(x);
+    check(arrayEquals(inPlace,
+            0f, (float) (Math.PI / 2), (float) Math.PI, (float) (-Math.PI / 2)),
+            "atan2i");
+
+    // Confirm non-in-place methods don't mutate their input
+    NumJArray original = angles.copy();
+    angles.sin();
+    check(arrayEquals(angles, original.data),
+            "sin leaves input unchanged");
+}
 
     static void testNumJArray() {
         section("NumJArray");
