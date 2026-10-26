@@ -4,8 +4,12 @@ import java.util.Arrays;
 
 import numj.core.NumJArray;
 import numj.core.Validator;
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorSpecies;
 
 public class lina {
+
+    private static final VectorSpecies<Float> MATMUL_SPECIES = FloatVector.SPECIES_PREFERRED;
 
     /**
      * Builds a diagonal matrix from a 1-D array, or extracts the main diagonal of a 2-D array.
@@ -321,13 +325,72 @@ public class lina {
             for (int i = 0; i < m; i++) {
                 int rowA = baseA + i * aRow;
                 int rowOut = outBase + i * p;
-
-                for (int kk = 0; kk < k; kk++) {
-                    float valA = aB.data[rowA + kk * aCol];
-                    int rowB = baseB + kk * bRow;
-
-                    for (int j = 0; j < p; j++) {
-                        out[rowOut + j] += valA * bB.data[rowB + j * bCol];
+                        
+                if (bCol == 1 && p >= MATMUL_SPECIES.length() * 4) {
+                    int lanes = MATMUL_SPECIES.length();
+                    int tileWidth = lanes * 4;
+                    int vectorBound = (p / tileWidth) * tileWidth;
+                
+                    // SIMD fast path: four independent vector accumulators.
+                    for (int j0 = 0; j0 < vectorBound; j0 += tileWidth) {
+                        FloatVector acc0 = FloatVector.zero(MATMUL_SPECIES);
+                        FloatVector acc1 = FloatVector.zero(MATMUL_SPECIES);
+                        FloatVector acc2 = FloatVector.zero(MATMUL_SPECIES);
+                        FloatVector acc3 = FloatVector.zero(MATMUL_SPECIES);
+                    
+                        for (int kk = 0; kk < k; kk++) {
+                            float valA = aB.data[rowA + kk * aCol];
+                            int rowB = baseB + kk * bRow + j0;
+                        
+                            acc0 = acc0.add(
+                                    FloatVector.fromArray(MATMUL_SPECIES, bB.data, rowB)
+                                            .mul(valA));
+                            
+                            acc1 = acc1.add(
+                                    FloatVector.fromArray(
+                                            MATMUL_SPECIES, bB.data, rowB + lanes)
+                                            .mul(valA));
+                                    
+                            acc2 = acc2.add(
+                                    FloatVector.fromArray(
+                                            MATMUL_SPECIES, bB.data, rowB + 2 * lanes)
+                                            .mul(valA));
+                                    
+                            acc3 = acc3.add(
+                                    FloatVector.fromArray(
+                                            MATMUL_SPECIES, bB.data, rowB + 3 * lanes)
+                                            .mul(valA));
+                        }
+                    
+                        acc0.intoArray(out, rowOut + j0);
+                        acc1.intoArray(out, rowOut + j0 + lanes);
+                        acc2.intoArray(out, rowOut + j0 + 2 * lanes);
+                        acc3.intoArray(out, rowOut + j0 + 3 * lanes);
+                    }
+                
+                    // Scalar tail for columns not covered by complete vector tiles.
+                    for (int j = vectorBound; j < p; j++) {
+                        float sum = 0f;
+                    
+                        for (int kk = 0; kk < k; kk++) {
+                            float valA = aB.data[rowA + kk * aCol];
+                            int rowB = baseB + kk * bRow;
+                        
+                            sum += valA * bB.data[rowB + j];
+                        }
+                    
+                        out[rowOut + j] = sum;
+                    }
+                } else {
+                    // Original general-stride fallback.
+                    for (int kk = 0; kk < k; kk++) {
+                        float valA = aB.data[rowA + kk * aCol];
+                        int rowB = baseB + kk * bRow;
+                    
+                        for (int j = 0; j < p; j++) {
+                            out[rowOut + j] +=
+                                    valA * bB.data[rowB + j * bCol];
+                        }
                     }
                 }
             }
