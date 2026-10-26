@@ -7,32 +7,22 @@ import jdk.incubator.vector.VectorSpecies;
 
 public final class NumJSIMD {
 
-    // =========================================================================
-    // OPERATION IDENTIFIERS
-    // =========================================================================
-
-    // Unary operation IDs
     public static final int ABS = 0, NEG = 1, SQRT = 2, EXP = 3, LOG = 4,
             FLOOR = 5, CEIL = 6, ROUND = 7, SIGN = 8,
             SIN = 9, COS = 10, TAN = 11, ASIN = 12, ACOS = 13, ATAN = 14,
             IS_NAN = 15, IS_INF = 16, IS_FINITE = 17, LOGICAL_NOT = 18;
 
-    // Binary operation IDs
     public static final int ADD = 50, SUB = 51, MUL = 52, DIV = 53,
             POW = 54, MOD = 55, CLIP = 56,
             EQUAL = 57, NOT_EQUAL = 58, GREATER = 59, GREATER_EQUAL = 60,
             LESS = 61, LESS_EQUAL = 62, LOGICAL_AND = 63, LOGICAL_OR = 64,
             LOGICAL_XOR = 65, MAXIMUM = 66, MINIMUM = 67, IS_CLOSE = 68;
 
-    private static final VectorSpecies<Float> SPECIES =
-            FloatVector.SPECIES_PREFERRED;
+    private static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
 
     private NumJSIMD() {
     }
 
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
 
     private static FloatVector maskToFloat(VectorMask<Float> mask) {
         return FloatVector.zero(SPECIES).blend(1.0f, mask);
@@ -50,14 +40,9 @@ public final class NumJSIMD {
 
     private static void validateExtra(int opId, float[] extra) {
         if (opId == CLIP && (extra == null || extra.length < 1)) {
-            throw new IllegalArgumentException(
-                    "CLIP requires a maximum value in extra[0]");
+            throw new IllegalArgumentException("CLIP requires a maximum value in extra[0]");
         }
     }
-
-    // =========================================================================
-    // UNARY OPERATIONS - IN PLACE
-    // =========================================================================
 
     public static NumJArray elementwisei(NumJArray a, int opId) {
         validateArray(a);
@@ -88,10 +73,6 @@ public final class NumJSIMD {
 
         return a;
     }
-
-    // =========================================================================
-    // UNARY OPERATIONS - OUT OF PLACE
-    // =========================================================================
 
     public static NumJArray elementwise(NumJArray a, int opId) {
         validateArray(a);
@@ -142,12 +123,9 @@ public final class NumJSIMD {
             case ASIN -> va.lanewise(VectorOperators.ASIN);
             case ACOS -> va.lanewise(VectorOperators.ACOS);
             case ATAN -> va.lanewise(VectorOperators.ATAN);
-            case LOGICAL_NOT ->
-                    maskToFloat(va.compare(VectorOperators.EQ, 0.0f));
-            case IS_NAN ->
-                    maskToFloat(va.test(VectorOperators.IS_NAN));
-            default -> throw new IllegalArgumentException(
-                    "Unsupported vector unary operation: " + opId);
+            case LOGICAL_NOT -> maskToFloat(va.compare(VectorOperators.EQ, 0.0f));
+            case IS_NAN -> maskToFloat(va.test(VectorOperators.IS_NAN));
+            default -> throw new IllegalArgumentException("Unsupported vector unary operation: " + opId);
         };
     }
 
@@ -172,17 +150,11 @@ public final class NumJSIMD {
             case IS_INF -> Float.isInfinite(v) ? 1.0f : 0.0f;
             case IS_FINITE -> Float.isFinite(v) ? 1.0f : 0.0f;
             case LOGICAL_NOT -> !truthy(v) ? 1.0f : 0.0f;
-            default -> throw new IllegalArgumentException(
-                    "Unknown unary operation ID: " + opId);
+            default -> throw new IllegalArgumentException("Unknown unary operation ID: " + opId);
         };
     }
 
-    // =========================================================================
-    // ARRAY - SCALAR OPERATIONS, IN PLACE
-    // =========================================================================
-
-    public static NumJArray elementwisei(
-            NumJArray a, float b, int opId, float... extra) {
+    public static NumJArray elementwisei(NumJArray a, float b, int opId, float... extra) {
 
         validateArray(a);
         validateExtra(opId, extra);
@@ -197,13 +169,11 @@ public final class NumJSIMD {
             for (; i < upperBound; i += SPECIES.length()) {
                 int p = start + i;
                 FloatVector va = FloatVector.fromArray(SPECIES, data, p);
-                applyBinaryScalarVector(va, b, opId, extra)
-                        .intoArray(data, p);
+                applyBinaryScalarVector(va, b, opId, extra).intoArray(data, p);
             }
 
             for (; i < length; i++) {
-                data[start + i] =
-                        applyBinaryScalarScalar(data[start + i], b, opId, extra);
+                data[start + i] = applyBinaryScalarScalar(data[start + i], b, opId, extra);
             }
 
             return a;
@@ -216,12 +186,7 @@ public final class NumJSIMD {
         return a;
     }
 
-    // =========================================================================
-    // ARRAY - SCALAR OPERATIONS, OUT OF PLACE
-    // =========================================================================
-
-    public static NumJArray elementwise(
-            NumJArray a, float b, int opId, float... extra) {
+    public static NumJArray elementwise(NumJArray a, float b, int opId, float... extra) {
 
         validateArray(a);
         validateExtra(opId, extra);
@@ -235,18 +200,15 @@ public final class NumJSIMD {
 
             for (; i < upperBound; i += SPECIES.length()) {
                 FloatVector va = FloatVector.fromArray(SPECIES, inData, i);
-                applyBinaryScalarVector(va, b, opId, extra)
-                        .intoArray(outData, i);
+                applyBinaryScalarVector(va, b, opId, extra).intoArray(outData, i);
             }
 
             for (; i < inData.length; i++) {
-                outData[i] =
-                        applyBinaryScalarScalar(inData[i], b, opId, extra);
+                outData[i] = applyBinaryScalarScalar(inData[i], b, opId, extra);
             }
         } else {
             for (int i = 0; i < inData.length; i++) {
-                outData[i] =
-                        applyBinaryScalarScalar(inData[i], b, opId, extra);
+                outData[i] = applyBinaryScalarScalar(inData[i], b, opId, extra);
             }
         }
 
@@ -262,8 +224,7 @@ public final class NumJSIMD {
         };
     }
 
-    private static FloatVector applyBinaryScalarVector(
-            FloatVector va, float b, int opId, float[] extra) {
+    private static FloatVector applyBinaryScalarVector(FloatVector va, float b, int opId, float[] extra) {
 
         return switch (opId) {
             case ADD -> va.add(b);
@@ -271,31 +232,18 @@ public final class NumJSIMD {
             case MUL -> va.mul(b);
             case DIV -> va.div(b);
             case POW -> va.lanewise(VectorOperators.POW, b);
-
-            case CLIP ->
-                    va.lanewise(VectorOperators.MAX, b)
-                      .lanewise(VectorOperators.MIN, extra[0]);
-
-            case EQUAL ->
-                    maskToFloat(va.compare(VectorOperators.EQ, b));
-            case NOT_EQUAL ->
-                    maskToFloat(va.compare(VectorOperators.NE, b));
-            case GREATER ->
-                    maskToFloat(va.compare(VectorOperators.GT, b));
-            case GREATER_EQUAL ->
-                    maskToFloat(va.compare(VectorOperators.GE, b));
-            case LESS ->
-                    maskToFloat(va.compare(VectorOperators.LT, b));
-            case LESS_EQUAL ->
-                    maskToFloat(va.compare(VectorOperators.LE, b));
-
-            default -> throw new IllegalArgumentException(
-                    "Unsupported vector scalar operation: " + opId);
+            case CLIP -> va.lanewise(VectorOperators.MAX, b).lanewise(VectorOperators.MIN, extra[0]);
+            case EQUAL -> maskToFloat(va.compare(VectorOperators.EQ, b));
+            case NOT_EQUAL -> maskToFloat(va.compare(VectorOperators.NE, b));
+            case GREATER -> maskToFloat(va.compare(VectorOperators.GT, b));
+            case GREATER_EQUAL -> maskToFloat(va.compare(VectorOperators.GE, b));
+            case LESS -> maskToFloat(va.compare(VectorOperators.LT, b));
+            case LESS_EQUAL -> maskToFloat(va.compare(VectorOperators.LE, b));
+            default -> throw new IllegalArgumentException("Unsupported vector scalar operation: " + opId);
         };
     }
 
-    private static float applyBinaryScalarScalar(
-            float v, float b, int opId, float[] extra) {
+    private static float applyBinaryScalarScalar(float v, float b, int opId, float[] extra) {
 
         return switch (opId) {
             case ADD -> v + b;
@@ -304,37 +252,23 @@ public final class NumJSIMD {
             case DIV -> v / b;
             case POW -> (float) Math.pow(v, b);
             case MOD -> v % b;
-
             case CLIP -> Math.max(b, Math.min(v, extra[0]));
-
             case EQUAL -> v == b ? 1.0f : 0.0f;
             case NOT_EQUAL -> v != b ? 1.0f : 0.0f;
             case GREATER -> v > b ? 1.0f : 0.0f;
             case GREATER_EQUAL -> v >= b ? 1.0f : 0.0f;
             case LESS -> v < b ? 1.0f : 0.0f;
             case LESS_EQUAL -> v <= b ? 1.0f : 0.0f;
-
-            case LOGICAL_AND ->
-                    truthy(v) && truthy(b) ? 1.0f : 0.0f;
-            case LOGICAL_OR ->
-                    truthy(v) || truthy(b) ? 1.0f : 0.0f;
-            case LOGICAL_XOR ->
-                    truthy(v) != truthy(b) ? 1.0f : 0.0f;
-
+            case LOGICAL_AND -> truthy(v) && truthy(b) ? 1.0f : 0.0f;
+            case LOGICAL_OR -> truthy(v) || truthy(b) ? 1.0f : 0.0f;
+            case LOGICAL_XOR -> truthy(v) != truthy(b) ? 1.0f : 0.0f;
             case MAXIMUM -> Math.max(v, b);
             case MINIMUM -> Math.min(v, b);
-
-            default -> throw new IllegalArgumentException(
-                    "Unknown binary scalar operation ID: " + opId);
+            default -> throw new IllegalArgumentException( "Unknown binary scalar operation ID: " + opId);
         };
     }
 
-    // =========================================================================
-    // ARRAY - ARRAY OPERATIONS, IN PLACE
-    // =========================================================================
-
-    public static NumJArray elementwisei(
-            NumJArray a, NumJArray b, int opId) {
+    public static NumJArray elementwisei(NumJArray a, NumJArray b, int opId) {
 
         validateArray(a);
         validateArray(b);
@@ -357,8 +291,7 @@ public final class NumJSIMD {
             }
 
             for (; i < length; i++) {
-                data[start + i] =
-                        applyArrayScalar(data[start + i], other[i], opId);
+                data[start + i] = applyArrayScalar(data[start + i], other[i], opId);
             }
 
             return a;
@@ -373,10 +306,6 @@ public final class NumJSIMD {
 
         return a;
     }
-
-    // =========================================================================
-    // ARRAY - ARRAY OPERATIONS, OUT OF PLACE
-    // =========================================================================
 
     public static NumJArray elementwise(
             NumJArray a, NumJArray b, int opId) {
@@ -450,8 +379,7 @@ public final class NumJSIMD {
         };
     }
 
-    private static float applyArrayScalar(
-            float a, float b, int opId) {
+    private static float applyArrayScalar(float a, float b, int opId) {
 
         return switch (opId) {
             case ADD -> a + b;
