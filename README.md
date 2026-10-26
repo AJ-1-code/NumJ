@@ -1,7 +1,7 @@
 # NumJ
 
 [![](https://jitpack.io/v/AJ-1-code/NumJ.svg)](https://jitpack.io/#AJ-1-code/NumJ)
-[![License: Custom MIT-Based](https://shields.io)](LICENSE)
+[![License: Custom MIT-Based](https://shields.io)](LICENSE.md)
 
 **NumJ** is a high-performance, feature-rich multidimensional array and linear algebra library built entirely in pure Java. Designed with artificial intelligence and deep learning workflows in mind, NumJ brings NumPy-inspired multidimensional array capabilities, stride-based views, and broadcasting directly to the Java Virtual Machine.
 
