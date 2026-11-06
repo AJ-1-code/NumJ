@@ -1,6 +1,7 @@
 package numj.math;
 
 import java.util.Arrays;
+import java.util.function.IntConsumer;
 
 import numj.core.NumJArray;
 import numj.core.Validator;
@@ -14,14 +15,21 @@ public class lina {
 
     private static final VectorSpecies<Float> SP = FloatVector.SPECIES_PREFERRED;
     private static final int VL = SP.length();
-
-    // Cache block sizes (floats). Packed B panel = KC*NC*4 bytes = 256 KB (fits L2).
+ 
+    // Cache blocks (floats). Packed B panel = KC*NC*4 bytes = 256 KB.
     private static final int MC = 64;
     private static final int KC = 256;
     private static final int NC = 256;
-
+ 
     // Below this many multiply-adds, threading overhead isn't worth it.
     private static final long PARALLEL_THRESHOLD = 1L << 18;
+ 
+    // Row counts at or below this use the skinny (matrix-vector style) paths.
+    private static final int SKINNY_M = 4;
+ 
+    private static final int MODE_BLOCKED = 0;
+    private static final int MODE_SKINNY_STREAM = 1; // B rows contiguous (bCol == 1)
+    private static final int MODE_SKINNY_DOT = 2;    // B columns contiguous (bRow == 1), A rows contiguous
 
     /**
      * Builds a diagonal matrix from a 1-D array, or extracts the main diagonal of a 2-D array.
@@ -295,41 +303,42 @@ public class lina {
     if (a.shape.length == 0 || b.shape.length == 0) {
         throw new IllegalArgumentException("matMul does not accept scalars; use mul instead");
     }
-
+ 
     boolean aVec = a.shape.length == 1;
     boolean bVec = b.shape.length == 1;
     NumJArray a2 = aVec ? a.expandDims(0) : a;
     NumJArray b2 = bVec ? b.expandDims(1) : b;
-
+ 
     int na = a2.shape.length;
     int nb = b2.shape.length;
     int m = a2.shape[na - 2];
     int k = a2.shape[na - 1];
     int p = b2.shape[nb - 1];
-
+ 
     if (k != b2.shape[nb - 2]) {
         throw new IllegalArgumentException(
             "Inner dimensions do not match for matMul: " + Arrays.toString(a.shape) + " x " + Arrays.toString(b.shape));
     }
-
+ 
     int[] batch = NumJArray.broadcastShape(
         Arrays.copyOfRange(a2.shape, 0, na - 2),
         Arrays.copyOfRange(b2.shape, 0, nb - 2));
     int nBatch = batch.length;
-
+ 
     NumJArray aB = a2.broadcastTo(NumJArray.concatInts(batch, m, k));
     NumJArray bB = b2.broadcastTo(NumJArray.concatInts(batch, k, p));
-
+ 
     int count = Validator.sizeOf(batch);
     float[] out = new float[count * m * p];
-
+ 
     final int aRow = aB.strides[nBatch];
     final int aCol = aB.strides[nBatch + 1];
     final int bRow = bB.strides[nBatch];
     final int bCol = bB.strides[nBatch + 1];
-
-    int[] offA = new int[count];
-    int[] offB = new int[count];
+ 
+    // Precompute per-batch offsets so batches/blocks can run independently.
+    final int[] offA = new int[count];
+    final int[] offB = new int[count];
     int[] idx = new int[nBatch];
     int baseA = aB.offset;
     int baseB = bB.offset;
@@ -346,53 +355,103 @@ public class lina {
             idx[d] = 0;
         }
     }
-
-    final int rowBlocks = (m + MC - 1) / MC;
-    final int totalTasks = count * rowBlocks;
+ 
     final float[] ad = aB.data;
     final float[] bd = bB.data;
     final int fm = m, fk = k, fp = p;
-
-    java.util.function.IntConsumer task = t -> {
-        int n = t / rowBlocks;
-        int i0 = (t % rowBlocks) * MC;
-        int i1 = Math.min(i0 + MC, fm);
-        matMulKernel(ad, offA[n], aRow, aCol,
-                     bd, offB[n], bRow, bCol,
-                     out, n * fm * fp, i0, i1, fk, fp);
+ 
+    // Pick a kernel.
+    final int mode;
+    if (m <= SKINNY_M && bCol == 1) {
+        mode = MODE_SKINNY_STREAM;
+    } else if (m <= SKINNY_M && bRow == 1 && aCol == 1) {
+        mode = MODE_SKINNY_DOT;
+    } else {
+        mode = MODE_BLOCKED;
+    }
+ 
+    final int chunk = skinnyChunk(p);
+    final int colBlocks = (p + chunk - 1) / chunk;
+    final int rowBlocks = (m + MC - 1) / MC;
+    final int perBatch = (mode == MODE_BLOCKED) ? rowBlocks : colBlocks;
+    final int totalTasks = count * perBatch;
+ 
+    // One task = one (batch, block). Tasks write disjoint output regions -> no races.
+    IntConsumer task = t -> {
+        int n = t / perBatch;
+        int r = t % perBatch;
+        int outBase = n * fm * fp;
+        switch (mode) {
+            case MODE_SKINNY_STREAM: {
+                int j0 = r * chunk;
+                int j1 = Math.min(j0 + chunk, fp);
+                skinnyStreamKernel(ad, offA[n], aRow, aCol, bd, offB[n], bRow,
+                                   out, outBase, fm, fk, fp, j0, j1);
+                break;
+            }
+            case MODE_SKINNY_DOT: {
+                int j0 = r * chunk;
+                int j1 = Math.min(j0 + chunk, fp);
+                skinnyDotKernel(ad, offA[n], aRow, bd, offB[n], bCol,
+                                out, outBase, fm, fk, fp, j0, j1);
+                break;
+            }
+            default: {
+                int i0 = r * MC;
+                int i1 = Math.min(i0 + MC, fm);
+                matMulKernel(ad, offA[n], aRow, aCol, bd, offB[n], bRow, bCol,
+                             out, outBase, i0, i1, fk, fp);
+            }
+        }
     };
-
+ 
     boolean parallel = totalTasks > 1 && (long) count * m * k * p >= PARALLEL_THRESHOLD;
     if (parallel) {
         IntStream.range(0, totalTasks).parallel().forEach(task);
     } else {
         for (int t = 0; t < totalTasks; t++) task.accept(t);
     }
-
+ 
     int[] outShape = new int[nBatch + (aVec ? 0 : 1) + (bVec ? 0 : 1)];
     System.arraycopy(batch, 0, outShape, 0, nBatch);
     int pos = nBatch;
     if (!aVec) outShape[pos++] = m;
     if (!bVec) outShape[pos] = p;
-
+ 
     return new NumJArray(out, outShape);
 }
-
-
+ 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+ 
+/** Column chunk size for skinny paths: ~2 tasks per thread, multiple of VL, 512..2048 floats. */
+private static int skinnyChunk(int p) {
+    int threads = Math.max(1, Runtime.getRuntime().availableProcessors());
+    int c = (p + threads * 2 - 1) / (threads * 2);
+    c = ((c + VL - 1) / VL) * VL;
+    return Math.max(512, Math.min(2048, c));
+}
+ 
+// ---------------------------------------------------------------------------
+// Kernel 1: blocked + vectorized (general case, larger m)
+// out[i0:i1, :] += A[i0:i1, :] * B
+// ---------------------------------------------------------------------------
 private static void matMulKernel(
         float[] ad, int aBase, int aRow, int aCol,
         float[] bd, int bBase, int bRow, int bCol,
         float[] out, int outBase, int i0, int i1, int k, int p) {
-            
+ 
+    // SIMD needs contiguous B rows. If B is strided/transposed, pack each panel.
     boolean needPack = bCol != 1;
     float[] pack = needPack ? new float[Math.min(KC, k) * Math.min(NC, p)] : null;
-
+ 
     for (int jc = 0; jc < p; jc += NC) {
         int nc = Math.min(NC, p - jc);
-
+ 
         for (int kc = 0; kc < k; kc += KC) {
             int kb = Math.min(KC, k - kc);
-
+ 
             float[] bs;
             int bOff, bStride;
             if (needPack) {
@@ -411,12 +470,13 @@ private static void matMulKernel(
                 bOff = bBase + kc * bRow + jc;
                 bStride = bRow;
             }
-
+ 
             for (int i = i0; i < i1; i++) {
                 int aOff = aBase + i * aRow + kc * aCol;
                 int oOff = outBase + i * p + jc;
                 int j = 0;
-
+ 
+                // 4 vector accumulators held in registers across the whole k-block
                 for (; j + 4 * VL <= nc; j += 4 * VL) {
                     FloatVector c0 = FloatVector.fromArray(SP, out, oOff + j);
                     FloatVector c1 = FloatVector.fromArray(SP, out, oOff + j + VL);
@@ -435,7 +495,7 @@ private static void matMulKernel(
                     c2.intoArray(out, oOff + j + 2 * VL);
                     c3.intoArray(out, oOff + j + 3 * VL);
                 }
-
+ 
                 for (; j + VL <= nc; j += VL) {
                     FloatVector c = FloatVector.fromArray(SP, out, oOff + j);
                     for (int kk = 0; kk < kb; kk++) {
@@ -444,8 +504,8 @@ private static void matMulKernel(
                     }
                     c.intoArray(out, oOff + j);
                 }
-
-                for (; j < nc; j++) {
+ 
+                for (; j < nc; j++) {  // scalar tail
                     float s = out[oOff + j];
                     for (int kk = 0; kk < kb; kk++) {
                         s += ad[aOff + kk * aCol] * bs[bOff + kk * bStride + j];
@@ -453,6 +513,101 @@ private static void matMulKernel(
                     out[oOff + j] = s;
                 }
             }
+        }
+    }
+}
+ 
+// ---------------------------------------------------------------------------
+// Kernel 2: skinny, streaming over contiguous B rows (bCol == 1)
+// out[0:m, j0:j1] += A[0:m, :] * B[:, j0:j1]
+// ---------------------------------------------------------------------------
+private static void skinnyStreamKernel(
+        float[] ad, int aBase, int aRow, int aCol,
+        float[] bd, int bBase, int bRow,
+        float[] out, int outBase, int m, int k, int p, int j0, int j1) {
+ 
+    final int vEnd = j0 + ((j1 - j0) / VL) * VL;
+ 
+    for (int i = 0; i < m; i++) {
+        int aOff = aBase + i * aRow;
+        int oOff = outBase + i * p;
+ 
+        int kk = 0;
+        for (; kk + 4 <= k; kk += 4) {
+            float a0 = ad[aOff + kk * aCol];
+            float a1 = ad[aOff + (kk + 1) * aCol];
+            float a2 = ad[aOff + (kk + 2) * aCol];
+            float a3 = ad[aOff + (kk + 3) * aCol];
+            FloatVector va0 = FloatVector.broadcast(SP, a0);
+            FloatVector va1 = FloatVector.broadcast(SP, a1);
+            FloatVector va2 = FloatVector.broadcast(SP, a2);
+            FloatVector va3 = FloatVector.broadcast(SP, a3);
+            int b0 = bBase + kk * bRow;
+            int b1 = b0 + bRow, b2 = b1 + bRow, b3 = b2 + bRow;
+ 
+            int j = j0;
+            for (; j < vEnd; j += VL) {
+                FloatVector c = FloatVector.fromArray(SP, out, oOff + j);
+                c = FloatVector.fromArray(SP, bd, b0 + j).fma(va0, c);
+                c = FloatVector.fromArray(SP, bd, b1 + j).fma(va1, c);
+                c = FloatVector.fromArray(SP, bd, b2 + j).fma(va2, c);
+                c = FloatVector.fromArray(SP, bd, b3 + j).fma(va3, c);
+                c.intoArray(out, oOff + j);
+            }
+            for (; j < j1; j++) {
+                out[oOff + j] += a0 * bd[b0 + j] + a1 * bd[b1 + j]
+                               + a2 * bd[b2 + j] + a3 * bd[b3 + j];
+            }
+        }
+        for (; kk < k; kk++) {  // leftover k rows
+            float a = ad[aOff + kk * aCol];
+            FloatVector va = FloatVector.broadcast(SP, a);
+            int b0 = bBase + kk * bRow;
+            int j = j0;
+            for (; j < vEnd; j += VL) {
+                FloatVector.fromArray(SP, bd, b0 + j)
+                           .fma(va, FloatVector.fromArray(SP, out, oOff + j))
+                           .intoArray(out, oOff + j);
+            }
+            for (; j < j1; j++) out[oOff + j] += a * bd[b0 + j];
+        }
+    }
+}
+ 
+// ---------------------------------------------------------------------------
+// Kernel 3: skinny, dot-product form for transposed B (bRow == 1) and
+// contiguous A rows (aCol == 1). Each output is a contiguous dot product.
+// out[0:m, j0:j1] += A[0:m, :] * B[:, j0:j1]
+// ---------------------------------------------------------------------------
+private static void skinnyDotKernel(
+        float[] ad, int aBase, int aRow,
+        float[] bd, int bBase, int bCol,
+        float[] out, int outBase, int m, int k, int p, int j0, int j1) {
+ 
+    final int step = 2 * VL;
+    final int kEnd = (k / step) * step;
+ 
+    for (int i = 0; i < m; i++) {
+        int aOff = aBase + i * aRow;
+        int oOff = outBase + i * p;
+ 
+        for (int j = j0; j < j1; j++) {
+            int bOff = bBase + j * bCol;
+ 
+            FloatVector acc0 = FloatVector.zero(SP);
+            FloatVector acc1 = FloatVector.zero(SP);
+            int kk = 0;
+            for (; kk < kEnd; kk += step) {
+                acc0 = FloatVector.fromArray(SP, ad, aOff + kk)
+                                  .fma(FloatVector.fromArray(SP, bd, bOff + kk), acc0);
+                acc1 = FloatVector.fromArray(SP, ad, aOff + kk + VL)
+                                  .fma(FloatVector.fromArray(SP, bd, bOff + kk + VL), acc1);
+            }
+            float s = acc0.add(acc1).reduceLanes(jdk.incubator.vector.VectorOperators.ADD);
+            for (; kk < k; kk++) {
+                s += ad[aOff + kk] * bd[bOff + kk];
+            }
+            out[oOff + j] += s;
         }
     }
 }
