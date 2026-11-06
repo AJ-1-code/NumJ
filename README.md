@@ -80,7 +80,7 @@ Add the NumJ dependency directly inside the `dependencies` block of your `build.
 
 ```groovy
 dependencies {
-    implementation 'com.github.AJ-1-code:NumJ:1.0.1'
+    implementation 'com.github.AJ-1-code:NumJ:1.0.5'
 }
 ```
 
