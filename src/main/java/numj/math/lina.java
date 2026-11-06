@@ -430,6 +430,7 @@ private static int skinnyChunk(int p) {
     int threads = Math.max(1, Runtime.getRuntime().availableProcessors());
     int c = (p + threads * 2 - 1) / (threads * 2);
     c = ((c + VL - 1) / VL) * VL;
+    System.out.println("test skinny chunk: ");
     return Math.max(512, Math.min(2048, c));
 }
  
@@ -441,6 +442,7 @@ private static void matMulKernel(
         float[] ad, int aBase, int aRow, int aCol,
         float[] bd, int bBase, int bRow, int bCol,
         float[] out, int outBase, int i0, int i1, int k, int p) {
+    System.out.println("test matmul kernel");
  
     // SIMD needs contiguous B rows. If B is strided/transposed, pack each panel.
     boolean needPack = bCol != 1;
@@ -525,6 +527,7 @@ private static void skinnyStreamKernel(
         float[] ad, int aBase, int aRow, int aCol,
         float[] bd, int bBase, int bRow,
         float[] out, int outBase, int m, int k, int p, int j0, int j1) {
+    System.out.println("test skinny stream kernel");
  
     final int vEnd = j0 + ((j1 - j0) / VL) * VL;
  
@@ -584,6 +587,8 @@ private static void skinnyDotKernel(
         float[] bd, int bBase, int bCol,
         float[] out, int outBase, int m, int k, int p, int j0, int j1) {
  
+    System.out.println("test skinny dot kernel");
+
     final int step = 2 * VL;
     final int kEnd = (k / step) * step;
  
