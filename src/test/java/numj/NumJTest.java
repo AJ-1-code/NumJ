@@ -16,6 +16,8 @@ public class NumJTest {
     static final NumJArray d = NumJArray.of(0, 1, 2, 3, 4, 5);
     static final NumJArray cube = NumJArray.arange(24).reshape(2, 3, 4);
 
+    static volatile float sink;
+
     public static void main(String[] args) {
 
         //for ease of adding new methods later, we just call all the test methods from main.
@@ -52,6 +54,19 @@ public class NumJTest {
         testSpecialValues();
         testFileIO();
 
+        int[] sizes = {100, 100_000, 10_000_000};
+
+        for (int size : sizes) {
+            NumJArray a = NumJArray.ones(size);
+
+            int iterations = size >= 10_000_000 ? 30 :
+                             size >= 100_000 ? 500 : 10_000;
+
+            System.out.println("\nArray size: " + size);
+
+            benchmark("Scalar add", a, 20, iterations);
+        }
+
         System.out.println("All tests passed!");
     }
 
@@ -76,6 +91,34 @@ public class NumJTest {
         check(a.get(0, 0) == 1 && cp.get(0, 0) == 100, "copy");
     }
 
+    static void benchmark(String name, NumJArray a, int warmup, int iterations) {
+
+        // Warmup
+        for (int i = 0; i < warmup; i++) {
+            NumJArray result = a.add( 2.5f);
+            sink = result.data[0];
+        }
+
+        // Timed
+        long start = System.nanoTime();
+
+        for (int i = 0; i < iterations; i++) {
+            NumJArray result = a.add( 2.5f);
+            sink = result.data[result.data.length - 1];
+        }
+
+        long elapsed = System.nanoTime() - start;
+
+        double nsPerOp = (double) elapsed / iterations;
+
+        System.out.printf(
+            "%-15s | %10.2f ns/op | %10.2f ops/sec%n",
+            name,
+            nsPerOp,
+            1_000_000_000.0 / nsPerOp
+        );
+    }
+
     static void testMath() {
         section("Math");
         check(a.sum() == 10, "sum");
@@ -90,6 +133,7 @@ public class NumJTest {
         check(near(a.log().get(0, 0), Math.log(1)), "log");
 
         check(a.add(5).get(0, 0) == 6, "scalar add");
+        checkTime(() -> a.add(5), "scalar add");
         check(a.sub(1).get(1, 1) == 3, "scalar sub");
         check(a.mul(2).get(1, 1) == 8, "scalar mul");
         check(a.div(2).get(1, 1) == 2, "scalar div");
@@ -891,4 +935,19 @@ public class NumJTest {
         }
         return true;
     }
+
+    static void checkTime(Runnable action, String name) {
+        long start = System.nanoTime();
+
+        action.run();
+
+        long end = System.nanoTime();
+        long elapsed = end - start;
+
+        System.out.printf("Time: %s took %.3f ms (%.3f µs)%n",
+                name,
+                elapsed / 1_000_000.0,
+                elapsed / 1_000.0);
+    }
+
 }

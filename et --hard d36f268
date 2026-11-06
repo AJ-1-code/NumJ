@@ -1,0 +1,241 @@
+package numj.core;
+import java.util.Arrays;
+import java.util.function.BiFunction;
+
+import numj.io.njio;
+import numj.io.npio;
+import numj.math.FloatBinaryOperator;
+import numj.math.FloatPredicate;
+import numj.math.FloatUnaryOperator;
+import numj.math.arithmatic;
+import numj.math.lina;
+import numj.math.sorts;
+import numj.math.stat;
+import numj.math.trig;
+import numj.ml.activation;
+
+/**
+ * A small, NumPy-style N-dimensional array of {@code float}s.
+ * 
+ *   {@code data}    - the flat backing array
+ *   {@code shape}   - the size of each dimension
+ *   {@code strides} - how many slots in {@code data} to jump to move one step along each dimension
+ *   {@code offset}  - the slot in {@code data} where element {@code [0, 0, ...]} lives
+ * 
+ *   {@link #transpose()}, {@link #slice(int[][])},
+ *   {@link #select(int, int)}, {@link #expandDims(int)} and {@link #reshape(int...)}
+ *
+ *
+ * 
+ */
+public class NumJArray {
+
+    /** Flat backing storage. Shared between this array and any views made from it. */
+    public final float[] data;
+
+    /** Size of each dimension. Do not modify; use {@link #shape()} for a safe copy. */
+    public final int[] shape;
+
+    /** Step (in {@code data} slots) to move one index along each dimension. */
+    public final int[] strides;
+
+    /** Index in {@code data} of the element at coordinates {@code [0, 0, ...]}. */
+    public final int offset;
+
+    public final int size;
+
+    /**
+     * Creates a contiguous (row-major) array that wraps {@code data} without copying it.
+     *
+     * @param data  the values in row-major order; its length must equal the product of {@code shape}
+     * @param shape the size of each dimension (an empty shape creates a 0-D scalar array)
+     * @throws IllegalArgumentException if {@code data} or {@code shape} is null, a dimension is
+     *                                  negative, or {@code data.length} does not match the shape
+     */
+    public NumJArray(float[] data, int[] shape) {
+        this(requireLength(data, shape), shape, createStrides(shape), 0);
+    }
+
+    /**
+     * Creates an array over {@code data} with custom strides and no offset.
+     *
+     * @param data    the backing array
+     * @param shape   the size of each dimension
+     * @param strides the stride of each dimension; must have the same length as {@code shape}
+     * @throws IllegalArgumentException if the arguments are inconsistent or would read outside {@code data}
+     */
+    public NumJArray(float[] data, int[] shape, int[] strides) {
+        this(data, shape, strides, 0);
+    }
+
+    /**
+     * Creates an array over {@code data} with custom strides and offset. This is the constructor
+     * views are built with.
+     *
+     * @param data    the backing array
+     * @param shape   the size of each dimension
+     * @param strides the stride of each dimension; must have the same length as {@code shape}
+     * @param offset  index in {@code data} of the first element
+     * @throws IllegalArgumentException if the arguments are inconsistent or any element
+     *                                  would lie outside {@code data}
+     */
+    public NumJArray(float[] data, int[] shape, int[] strides, int offset) {
+        if (data == null) {
+            throw new IllegalArgumentException("data must not be null");
+        }
+        Validator.checkShape(shape);
+        if (strides == null || strides.length != shape.length) {
+            throw new IllegalArgumentException("strides must have the same length as shape");
+        }
+
+        this.data = data;
+        this.shape = shape.clone();
+        this.strides = strides.clone();
+        this.offset = offset;
+        this.size = Validator.sizeOf(shape);
+
+        if (size > 0) {
+            long lowest = offset;
+            long highest = offset;
+            for (int i = 0; i < shape.length; i++) {
+                long extent = (long) (shape[i] - 1) * strides[i];
+                if (extent > 0) highest += extent; else lowest += extent;
+            }
+            if (lowest < 0 || highest >= data.length) {
+                throw new IllegalArgumentException(
+                    "Shape, strides and offset reach outside the data array (data length " + data.length + ")");
+            }
+        }
+    }
+
+    /**
+     * Returns the shape.
+     *
+     * @return a copy of the shape array
+     */
+    public int[] shape() {
+        return shape.clone();
+    }
+
+    /**
+     * Returns the strides.
+     *
+     * @return a copy of the strides array
+     */
+    public int[] strides() {
+        return strides.clone();
+    }
+
+    /**
+     * Returns the number of dimensions.
+     *
+     * @return the rank of the array ({@code 0} for a scalar array)
+     */
+    public int ndim() {
+        return shape.length;
+    }
+
+    /**
+     * Returns the total number of elements.
+     *
+     * @return the product of all dimensions
+     */
+    public int size() {
+        return size;
+    }
+
+    /**
+     * Returns the only element of a single-element array.
+     *
+     * @return the value of the one element
+     * @throws IllegalStateException if the array does not contain exactly one element
+     */
+    public float item() {
+        if (size != 1) {
+            throw new IllegalStateException("item() requires exactly 1 element, array has " + size);
+        }
+        return data[offset];
+    }
+
+    /**
+     * Reads one element.
+     *
+     * @param indices one index per dimension; negative indices count from the end
+     * @return the value at those coordinates
+     * @throws IllegalArgumentException  if the number of indices differs from {@link #ndim()}
+     * @throws IndexOutOfBoundsException if any index is outside its dimension
+     */
+    public float get(int... indices) {
+        return data[getFlatIndex(indices)];
+    }
+
+    /**
+     * Writes one element. If this array is a view, the original array changes too.
+     *
+     * @param value   the value to store
+     * @param indices one index per dimension; negative indices count from the end
+     * @throws IllegalArgumentException  if the number of indices differs from {@link #ndim()}
+     * @throws IndexOutOfBoundsException if any index is outside its dimension
+     */
+    public void set(float value, int... indices) {
+        data[getFlatIndex(indices)] = value;
+    }
+
+    /**
+     * Creates an array of zeros.
+     *
+     * @param shape the size of each dimension
+     * @return a new contiguous array filled with {@code 0.0}
+     * @throws IllegalArgumentException if the shape is invalid
+     */
+    public static NumJArray zeros(int... shape) {
+        return creation.zeros(shape);
+    }
+
+    /**
+     * Creates an array of ones.
+     *
+     * @param shape the size of each dimension
+     * @return a new contiguous array filled with {@code 1.0}
+     * @throws IllegalArgumentException if the shape is invalid
+     */
+    public static NumJArray ones(int... shape) {
+        return creation.ones(shape);
+    }
+
+    /**
+     * Creates an array filled with one value.
+     *
+     * @param value the value for every element
+     * @param shape the size of each dimension
+     * @return a new contiguous array filled with {@code value}
+     * @throws IllegalArgumentException if the shape is invalid
+     */
+    public static NumJArray full(float value, int... shape) {
+        return creation.full(value, shape);
+    }
+
+    /**
+     * Creates a 1-D array from the given values (the values are copied).
+     *
+     * @param values the elements
+     * @return a new 1-D array
+     * @throws IllegalArgumentException if {@code values} is null
+     */
+    public static NumJArray of(float... values) {
+        return creation.of(values);
+    }
+
+    /**
+     * Creates a 2-D array from a rectangular {@code float[][]} (the values are copied).
+     *
+     * @param rows the rows; every row must have the same length
+     * @return a new 2-D array of shape {@code [rows.length, rows[0].length]}
+     * @throws IllegalArgumentException if {@code rows} is null, or the rows are ragged
+     */
+    public static NumJArray of(float[][] rows) {
+        return creation.of(rows);
+    }
+
+    /**
+     * Creates a 1-D array counting up from 0 to {@code stop} in steps of 1, like Pythons {@code range(stop)}.

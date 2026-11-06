@@ -68,6 +68,14 @@ public class NumJArray {
         this(data, shape, strides, 0);
     }
 
+    public NumJArray(float[] data, int[] shape, int size) {
+        this.data = data;
+        this.shape = shape;
+        this.strides = createStrides(shape);   // one allocation, canonical row-major strides
+        this.offset = 0;
+        this.size = size;
+    }
+
     /**
      * Creates an array over {@code data} with custom strides and offset. This is the constructor
      * views are built with.
@@ -668,6 +676,198 @@ public class NumJArray {
         return arithmatic.add(this, b);
     }
 
+    
+    // // Absolute value
+    // public NumJArray absKernel() {
+    //     return arithmatic.abs(this);
+    // }
+
+    // public NumJArray absInto(NumJArray dest) {
+    //     return arithmatic.absi(this, dest);
+    // }
+
+    // // Negation
+    // public NumJArray negKernel() {
+    //     return arithmatic.neg(this);
+    // }
+
+    // public NumJArray negInto(NumJArray dest) {
+    //     return arithmatic.negi(this, dest);
+    // }
+
+    // // Square root
+    // public NumJArray sqrtKernel() {
+    //     return arithmatic.sqrt(this);
+    // }
+
+    // public NumJArray sqrtInto(NumJArray dest) {
+    //     return arithmatic.sqrti(this, dest);
+    // }
+
+    // // Power
+    // public NumJArray powKernel(float power) {
+    //     return arithmatic.pow(this, power);
+    // }
+
+    // public NumJArray powInto(NumJArray dest, float power) {
+    //     return arithmatic.powi(this, dest, power);
+    // }
+
+    // // Exponential
+    // public NumJArray expKernel() {
+    //     return arithmatic.exp(this);
+    // }
+
+    // public NumJArray expInto(NumJArray dest) {
+    //     return arithmatic.expi(this, dest);
+    // }
+
+    // // Logarithm
+    // public NumJArray logKernel() {
+    //     return arithmatic.log(this);
+    // }
+
+    // public NumJArray logInto(NumJArray dest) {
+    //     return arithmatic.logi(this, dest);
+    // }
+
+    // // Floor
+    // public NumJArray floorKernel() {
+    //     return arithmatic.floor(this);
+    // }
+
+    // public NumJArray floorInto(NumJArray dest) {
+    //     return arithmatic.floori(this, dest);
+    // }
+
+    // // Ceiling
+    // public NumJArray ceilKernel() {
+    //     return arithmatic.ceil(this);
+    // }
+
+    // public NumJArray ceilInto(NumJArray dest) {
+    //     return arithmatic.ceili(this, dest);
+    // }
+
+    // // Round
+    // public NumJArray roundKernel() {
+    //     return arithmatic.round(this);
+    // }
+
+    // public NumJArray roundInto(NumJArray dest) {
+    //     return arithmatic.roundi(this, dest);
+    // }
+
+    // // Sign
+    // public NumJArray signKernel() {
+    //     return arithmatic.sign(this);
+    // }
+
+    // public NumJArray signInto(NumJArray dest) {
+    //     return arithmatic.signi(this, dest);
+    // }
+
+    // // Trigonometry
+    // public NumJArray sinKernel() {
+    //     return arithmatic.sin(this);
+    // }
+
+    // public NumJArray sinInto(NumJArray dest) {
+    //     return arithmatic.sini(this, dest);
+    // }
+
+    // public NumJArray cosKernel() {
+    //     return arithmatic.cos(this);
+    // }
+
+    // public NumJArray cosInto(NumJArray dest) {
+    //     return arithmatic.cosi(this, dest);
+    // }
+
+    // public NumJArray tanKernel() {
+    //     return arithmatic.tan(this);
+    // }
+
+    // public NumJArray tanInto(NumJArray dest) {
+    //     return arithmatic.tani(this, dest);
+    // }
+
+    // public NumJArray asinKernel() {
+    //     return arithmatic.asin(this);
+    // }
+
+    // public NumJArray asinInto(NumJArray dest) {
+    //     return arithmatic.asini(this, dest);
+    // }
+
+    // public NumJArray acosKernel() {
+    //     return arithmatic.acos(this);
+    // }
+
+    // public NumJArray acosInto(NumJArray dest) {
+    //     return arithmatic.acosi(this, dest);
+    // }
+
+    // public NumJArray atanKernel() {
+    //     return arithmatic.atan(this);
+    // }
+
+    // public NumJArray atanInto(NumJArray dest) {
+    //     return arithmatic.atani(this, dest);
+    // }
+
+    // // Scalar arithmetic
+    // public NumJArray addKernel(float b) {
+    //     return arithmatic.add(this, b);
+    // }
+
+    // public NumJArray addInto(NumJArray dest, float b) {
+    //     return arithmatic.addi(this, dest, b);
+    // }
+
+    // public NumJArray subKernel(float b) {
+    //     return arithmatic.sub(this, b);
+    // }
+
+    // public NumJArray subInto(NumJArray dest, float b) {
+    //     return arithmatic.subi(this, dest, b);
+    // }
+
+    // public NumJArray mulKernel(float b) {
+    //     return arithmatic.mul(this, b);
+    // }
+
+    // public NumJArray mulInto(NumJArray dest, float b) {
+    //     return arithmatic.muli(this, dest, b);
+    // }
+
+    // public NumJArray divKernel(float b) {
+    //     return arithmatic.div(this, b);
+    // }
+
+    // public NumJArray divInto(NumJArray dest, float b) {
+    //     return arithmatic.divi(this, dest, b);
+    // }
+
+    // // Clipping
+    // public NumJArray clipKernel(float min, float max) {
+    //     return arithmatic.clip(this, min, max);
+    // }
+
+    // public NumJArray clipInto(NumJArray dest, float min, float max) {
+    //     return arithmatic.clip(this, dest, min, max);
+    // }
+
+    // // Modulo
+    // public NumJArray modKernel(float b) {
+    //     return arithmatic.mod(this, b);
+    // }
+
+    // public NumJArray modInto(NumJArray dest, float b) {
+    //     return arithmatic.modi(this, dest, b);
+    // }
+
+
     /**
      * Subtracts a scalar from every element.
      *
@@ -708,6 +908,39 @@ public class NumJArray {
     public NumJArray mod(float b) {
         return arithmatic.mod(this, b);
     }
+
+    // public NumJArray addKernel(NumJArray b) {
+    //     return arithmatic.addi(this, b);
+    // }
+
+    // public NumJArray subKernel(NumJArray b) {
+    //     return arithmatic.sub(this, b);
+    // }
+
+    // public NumJArray mulKernel(NumJArray b) {
+    //     return arithmatic.mul(this, b);
+    // }
+
+    // public NumJArray divKernel(NumJArray b) {
+    //     return arithmatic.div(this, b);
+    // }
+
+    // public NumJArray addInto(NumJArray b, NumJArray dest) {
+    //     return arithmatic.addi(this, b, dest);
+    // }
+
+    // public NumJArray subInto(NumJArray b, NumJArray dest) {
+    //     return arithmatic.subi(this, b, dest);
+    // }
+
+    // public NumJArray mulInto(NumJArray b, NumJArray dest) {
+    //     return arithmatic.muli(this, b, dest);
+    // }
+
+    // public NumJArray divInto(NumJArray b, NumJArray dest) {
+    //     return arithmatic.divi(this, b, dest);
+    // }
+
 
     /**
      * Element-wise addition with broadcasting.
@@ -2425,7 +2658,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray addi(float b) {
-        return arithmatic.addi(this, b);
+        return arithmatic.addi(this, this, b);
     }
 
     /**
@@ -2436,7 +2669,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code b} cannot be broadcast to this shape
      */
     public NumJArray addi(NumJArray b) {
-        return arithmatic.addi(this, b);
+        return arithmatic.addi(this, this, b);
     }
 
     /**
@@ -2446,7 +2679,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray subi(float b) {
-        return arithmatic.subi(this, b);
+        return arithmatic.subi(this, this, b);
     }
 
     /**
@@ -2457,7 +2690,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code b} cannot be broadcast to this shape
      */
     public NumJArray subi(NumJArray b) {
-        return arithmatic.subi(this, b);
+        return arithmatic.subi(this, this, b);
     }
 
     /**
@@ -2467,7 +2700,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray muli(float b) {
-        return arithmatic.muli(this, b);
+        return arithmatic.muli(this, this, b);
     }
 
     /**
@@ -2478,7 +2711,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code b} cannot be broadcast to this shape
      */
     public NumJArray muli(NumJArray b) {
-        return arithmatic.muli(this, b);
+        return arithmatic.muli(this, this, b);
     }
 
     /**
@@ -2488,7 +2721,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray divi(float b) {
-        return arithmatic.divi(this, b);
+        return arithmatic.divi(this, this, b);
     }
 
     /**
@@ -2499,7 +2732,7 @@ public class NumJArray {
      * @throws IllegalArgumentException if {@code b} cannot be broadcast to this shape
      */
     public NumJArray divi(NumJArray b) {
-        return arithmatic.divi(this, b);
+        return arithmatic.divi(this, this, b);
     }
 
     /**
@@ -2508,7 +2741,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray sqrti() {
-        return arithmatic.sqrti(this);
+        return arithmatic.sqrti(this, this);
     }
 
     /**
@@ -2518,7 +2751,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray powi(float b) {
-        return arithmatic.powi(this, b);
+        return arithmatic.powi(this, this, b);
     }
 
     /**
@@ -2527,7 +2760,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray expi() {
-        return arithmatic.expi(this);
+        return arithmatic.expi(this, this);
     }
 
     /**
@@ -2536,7 +2769,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray logi() {
-        return arithmatic.logi(this);
+        return arithmatic.logi(this, this);
     }
 
     /**
@@ -2546,7 +2779,7 @@ public class NumJArray {
      * @return this array
      */
     public NumJArray modi(float b) {
-        return arithmatic.modi(this, b);
+        return arithmatic.modi(this, this, b);
     }
 
     /**

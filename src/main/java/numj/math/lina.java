@@ -5,7 +5,23 @@ import java.util.Arrays;
 import numj.core.NumJArray;
 import numj.core.Validator;
 
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorSpecies;
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
 public class lina {
+
+    private static final VectorSpecies<Float> SP = FloatVector.SPECIES_PREFERRED;
+    private static final int VL = SP.length();
+
+    // Cache block sizes (floats). Packed B panel = KC*NC*4 bytes = 256 KB (fits L2).
+    private static final int MC = 64;
+    private static final int KC = 256;
+    private static final int NC = 256;
+
+    // Below this many multiply-adds, threading overhead isn't worth it.
+    private static final long PARALLEL_THRESHOLD = 1L << 18;
 
     /**
      * Builds a diagonal matrix from a 1-D array, or extracts the main diagonal of a 2-D array.
@@ -273,83 +289,172 @@ public class lina {
      *                                  or the batch dimensions cannot be broadcast
      */
     public static NumJArray matMul(NumJArray a, NumJArray b) {
-        if (b == null) {
-            throw new IllegalArgumentException("b must not be null");
+    if (b == null) {
+        throw new IllegalArgumentException("b must not be null");
+    }
+    if (a.shape.length == 0 || b.shape.length == 0) {
+        throw new IllegalArgumentException("matMul does not accept scalars; use mul instead");
+    }
+
+    boolean aVec = a.shape.length == 1;
+    boolean bVec = b.shape.length == 1;
+    NumJArray a2 = aVec ? a.expandDims(0) : a;
+    NumJArray b2 = bVec ? b.expandDims(1) : b;
+
+    int na = a2.shape.length;
+    int nb = b2.shape.length;
+    int m = a2.shape[na - 2];
+    int k = a2.shape[na - 1];
+    int p = b2.shape[nb - 1];
+
+    if (k != b2.shape[nb - 2]) {
+        throw new IllegalArgumentException(
+            "Inner dimensions do not match for matMul: " + Arrays.toString(a.shape) + " x " + Arrays.toString(b.shape));
+    }
+
+    int[] batch = NumJArray.broadcastShape(
+        Arrays.copyOfRange(a2.shape, 0, na - 2),
+        Arrays.copyOfRange(b2.shape, 0, nb - 2));
+    int nBatch = batch.length;
+
+    NumJArray aB = a2.broadcastTo(NumJArray.concatInts(batch, m, k));
+    NumJArray bB = b2.broadcastTo(NumJArray.concatInts(batch, k, p));
+
+    int count = Validator.sizeOf(batch);
+    float[] out = new float[count * m * p];
+
+    final int aRow = aB.strides[nBatch];
+    final int aCol = aB.strides[nBatch + 1];
+    final int bRow = bB.strides[nBatch];
+    final int bCol = bB.strides[nBatch + 1];
+
+    int[] offA = new int[count];
+    int[] offB = new int[count];
+    int[] idx = new int[nBatch];
+    int baseA = aB.offset;
+    int baseB = bB.offset;
+    for (int n = 0; n < count; n++) {
+        offA[n] = baseA;
+        offB[n] = baseB;
+        for (int d = nBatch - 1; d >= 0; d--) {
+            idx[d]++;
+            baseA += aB.strides[d];
+            baseB += bB.strides[d];
+            if (idx[d] < batch[d]) break;
+            baseA -= aB.strides[d] * batch[d];
+            baseB -= bB.strides[d] * batch[d];
+            idx[d] = 0;
         }
-        if (a.shape.length == 0 || b.shape.length == 0) {
-            throw new IllegalArgumentException("matMul does not accept scalars; use mul instead");
-        }
+    }
 
-        boolean aVec = a.shape.length == 1;
-        boolean bVec = b.shape.length == 1;
-        NumJArray a2 = aVec ? a.expandDims(0) : a;
-        NumJArray b2 = bVec ? b.expandDims(1) : b;
+    final int rowBlocks = (m + MC - 1) / MC;
+    final int totalTasks = count * rowBlocks;
+    final float[] ad = aB.data;
+    final float[] bd = bB.data;
+    final int fm = m, fk = k, fp = p;
 
-        int na = a2.shape.length;
-        int nb = b2.shape.length;
-        int m = a2.shape[na - 2];
-        int k = a2.shape[na - 1];
-        int p = b2.shape[nb - 1];
+    java.util.function.IntConsumer task = t -> {
+        int n = t / rowBlocks;
+        int i0 = (t % rowBlocks) * MC;
+        int i1 = Math.min(i0 + MC, fm);
+        matMulKernel(ad, offA[n], aRow, aCol,
+                     bd, offB[n], bRow, bCol,
+                     out, n * fm * fp, i0, i1, fk, fp);
+    };
 
-        if (k != b2.shape[nb - 2]) {
-            throw new IllegalArgumentException(
-                "Inner dimensions do not match for matMul: " + Arrays.toString(a.shape) + " x " + Arrays.toString(b.shape));
-        }
+    boolean parallel = totalTasks > 1 && (long) count * m * k * p >= PARALLEL_THRESHOLD;
+    if (parallel) {
+        IntStream.range(0, totalTasks).parallel().forEach(task);
+    } else {
+        for (int t = 0; t < totalTasks; t++) task.accept(t);
+    }
 
-        int[] batch = NumJArray.broadcastShape(
-            Arrays.copyOfRange(a2.shape, 0, na - 2),
-            Arrays.copyOfRange(b2.shape, 0, nb - 2));
-        int nBatch = batch.length;
+    int[] outShape = new int[nBatch + (aVec ? 0 : 1) + (bVec ? 0 : 1)];
+    System.arraycopy(batch, 0, outShape, 0, nBatch);
+    int pos = nBatch;
+    if (!aVec) outShape[pos++] = m;
+    if (!bVec) outShape[pos] = p;
 
-        NumJArray aB = a2.broadcastTo(NumJArray.concatInts(batch, m, k));
-        NumJArray bB = b2.broadcastTo(NumJArray.concatInts(batch, k, p));
+    return new NumJArray(out, outShape);
+}
 
-        int count = Validator.sizeOf(batch);
-        float[] out = new float[count * m * p];
 
-        int[] idx = new int[nBatch];
-        int baseA = aB.offset;
-        int baseB = bB.offset;
-        int aRow = aB.strides[nBatch];
-        int aCol = aB.strides[nBatch + 1];
-        int bRow = bB.strides[nBatch];
-        int bCol = bB.strides[nBatch + 1];
+private static void matMulKernel(
+        float[] ad, int aBase, int aRow, int aCol,
+        float[] bd, int bBase, int bRow, int bCol,
+        float[] out, int outBase, int i0, int i1, int k, int p) {
+            
+    boolean needPack = bCol != 1;
+    float[] pack = needPack ? new float[Math.min(KC, k) * Math.min(NC, p)] : null;
 
-        for (int n = 0; n < count; n++) {
-            int outBase = n * m * p;
+    for (int jc = 0; jc < p; jc += NC) {
+        int nc = Math.min(NC, p - jc);
 
-            for (int i = 0; i < m; i++) {
-                int rowA = baseA + i * aRow;
-                int rowOut = outBase + i * p;
+        for (int kc = 0; kc < k; kc += KC) {
+            int kb = Math.min(KC, k - kc);
 
-                for (int kk = 0; kk < k; kk++) {
-                    float valA = aB.data[rowA + kk * aCol];
-                    int rowB = baseB + kk * bRow;
-
-                    for (int j = 0; j < p; j++) {
-                        out[rowOut + j] += valA * bB.data[rowB + j * bCol];
+            float[] bs;
+            int bOff, bStride;
+            if (needPack) {
+                for (int kk = 0; kk < kb; kk++) {
+                    int src = bBase + (kc + kk) * bRow + jc * bCol;
+                    int dst = kk * nc;
+                    for (int j = 0; j < nc; j++) {
+                        pack[dst + j] = bd[src + j * bCol];
                     }
                 }
+                bs = pack;
+                bOff = 0;
+                bStride = nc;
+            } else {
+                bs = bd;
+                bOff = bBase + kc * bRow + jc;
+                bStride = bRow;
             }
 
-            for (int d = nBatch - 1; d >= 0; d--) {
-                idx[d]++;
-                baseA += aB.strides[d];
-                baseB += bB.strides[d];
-                if (idx[d] < batch[d]) break;
-                baseA -= aB.strides[d] * batch[d];
-                baseB -= bB.strides[d] * batch[d];
-                idx[d] = 0;
+            for (int i = i0; i < i1; i++) {
+                int aOff = aBase + i * aRow + kc * aCol;
+                int oOff = outBase + i * p + jc;
+                int j = 0;
+
+                for (; j + 4 * VL <= nc; j += 4 * VL) {
+                    FloatVector c0 = FloatVector.fromArray(SP, out, oOff + j);
+                    FloatVector c1 = FloatVector.fromArray(SP, out, oOff + j + VL);
+                    FloatVector c2 = FloatVector.fromArray(SP, out, oOff + j + 2 * VL);
+                    FloatVector c3 = FloatVector.fromArray(SP, out, oOff + j + 3 * VL);
+                    for (int kk = 0; kk < kb; kk++) {
+                        FloatVector va = FloatVector.broadcast(SP, ad[aOff + kk * aCol]);
+                        int bo = bOff + kk * bStride + j;
+                        c0 = FloatVector.fromArray(SP, bs, bo).fma(va, c0);
+                        c1 = FloatVector.fromArray(SP, bs, bo + VL).fma(va, c1);
+                        c2 = FloatVector.fromArray(SP, bs, bo + 2 * VL).fma(va, c2);
+                        c3 = FloatVector.fromArray(SP, bs, bo + 3 * VL).fma(va, c3);
+                    }
+                    c0.intoArray(out, oOff + j);
+                    c1.intoArray(out, oOff + j + VL);
+                    c2.intoArray(out, oOff + j + 2 * VL);
+                    c3.intoArray(out, oOff + j + 3 * VL);
+                }
+
+                for (; j + VL <= nc; j += VL) {
+                    FloatVector c = FloatVector.fromArray(SP, out, oOff + j);
+                    for (int kk = 0; kk < kb; kk++) {
+                        FloatVector va = FloatVector.broadcast(SP, ad[aOff + kk * aCol]);
+                        c = FloatVector.fromArray(SP, bs, bOff + kk * bStride + j).fma(va, c);
+                    }
+                    c.intoArray(out, oOff + j);
+                }
+
+                for (; j < nc; j++) {
+                    float s = out[oOff + j];
+                    for (int kk = 0; kk < kb; kk++) {
+                        s += ad[aOff + kk * aCol] * bs[bOff + kk * bStride + j];
+                    }
+                    out[oOff + j] = s;
+                }
             }
         }
-
-        int[] outShape = new int[nBatch + (aVec ? 0 : 1) + (bVec ? 0 : 1)];
-        System.arraycopy(batch, 0, outShape, 0, nBatch);
-        int pos = nBatch;
-        if (!aVec) outShape[pos++] = m;
-        if (!bVec) outShape[pos] = p;
-
-        return new NumJArray(out, outShape);
     }
+}
 
 }

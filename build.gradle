@@ -1,10 +1,26 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'me.champeau.jmh' version '0.7.3'
 }
 
 group = 'com.numj'
 version = '1.0.0'
+
+jmh {
+    benchmarkMode = ['avgt']
+    timeUnit = 'ns'
+
+    jvmArgs = [
+        '--add-modules=jdk.incubator.vector',
+        '--add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED'
+    ]
+
+    timeOnIteration = '500ms'
+    warmup = '500ms'
+
+    includes = ['numj.MatMulBench']
+}
 
 repositories {
     mavenCentral()
@@ -45,6 +61,28 @@ tasks.register('runNumJTest', JavaExec) {
     mainClass = 'numj.NumJTest'
 }
 
+tasks.register('runScalarBenchmark', JavaExec) {
+    group = 'benchmark'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'numj.ScalarBenchmark'
+    jvmArgs '--add-modules=jdk.incubator.vector'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--add-modules', 'jdk.incubator.vector']
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs += ['--add-modules=jdk.incubator.vector']
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs += ['--add-modules', 'jdk.incubator.vector']
+}
+compileJava {
+    options.compilerArgs << '--add-exports=java.base/jdk.internal.vm.annotation=ALL-UNNAMED'
 }
