@@ -1608,6 +1608,20 @@ public class NumJArray {
         return activation.softplusD(this);
     }
 
+    public NumJArray leakyRelu(float alpha) {
+        return activation.leakyRelu(this, alpha);
+    }
+
+    public NumJArray leakyRelui(float alpha) {
+        return activation.leakyRelui(this, alpha);
+    }
+
+    public NumJArray leakyReluD(float alpha) {
+        return activation.leakyReluD(this, alpha);
+    }
+
+    
+
     /**
      * Softmax over all elements (they sum to 1 afterwards). Stable against overflow.
      *
