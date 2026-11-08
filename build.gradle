@@ -68,6 +68,13 @@ tasks.register('runScalarBenchmark', JavaExec) {
     jvmArgs '--add-modules=jdk.incubator.vector'
 }
 
+tasks.register('runNeuralNet', JavaExec) {
+    group = 'benchmark'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'numj.NeuralNet'
+    jvmArgs '--add-modules=jdk.incubator.vector'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
 }

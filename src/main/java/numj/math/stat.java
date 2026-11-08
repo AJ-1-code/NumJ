@@ -35,7 +35,7 @@ public class stat {
      * @return the mean ({@code NaN} for an empty array)
      */
     public static float mean(NumJArray array) {
-        return sum(array) / array.size();
+        return (float) sum(array) / array.size();
     }
 
     /**

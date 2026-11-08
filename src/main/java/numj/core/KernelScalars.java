@@ -6,9 +6,28 @@ import java.util.Objects;
 import java.util.function.BinaryOperator;
 
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorSpecies;
+import jdk.incubator.vector.VectorOperators;
 
 public final class KernelScalars {
+
+    private static final int ACT_RELU       = 0;
+    private static final int ACT_RELU_D     = 1;
+    private static final int ACT_LEAKY      = 2;
+    private static final int ACT_LEAKY_D    = 3;
+    private static final int ACT_SIGMOID    = 4;
+    private static final int ACT_SIGMOID_D  = 5;
+    private static final int ACT_TANH       = 6;
+    private static final int ACT_TANH_D     = 7;
+    private static final int ACT_ELU        = 8;
+    private static final int ACT_ELU_D      = 9;
+    private static final int ACT_SOFTPLUS   = 10;
+    private static final int ACT_SOFTPLUS_D = 11;
+    private static final int ACT_SILU       = 12;
+    private static final int ACT_SILU_D     = 13;
+    private static final int ACT_GELU       = 14;
+    private static final int ACT_GELU_D     = 15;
 
     private static final VectorSpecies<Float> SPECIES =
             FloatVector.SPECIES_PREFERRED;
@@ -652,7 +671,7 @@ public final class KernelScalars {
 
         NumJArray in = compact(a);
         NumJArray out = create(a);
-        kernel.apply(in, out);          // temporaries are contiguous, so this hits the fast path
+        kernel.apply(in, out);         
         scatter(out.data, dest);
         return dest;
     }
@@ -771,4 +790,481 @@ public final class KernelScalars {
 
         return dest;
     }
+
+    private static final float GELU_C = 0.7978845608f;
+    private static final float GELU_K = 0.044715f;
+
+    public static NumJArray relu(NumJArray a) {
+        NumJArray out = create(a);
+        relui(a, out);
+        return out;
+    }
+
+    public static NumJArray relui(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_RELU, 0f);
+    }
+
+    public static NumJArray reluD(NumJArray a) {
+        NumJArray out = create(a);
+        reluDi(a, out);
+        return out;
+    }
+
+    public static NumJArray reluDi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_RELU_D, 0f);
+    }
+
+    public static NumJArray leakyRelu(NumJArray a, float alpha) {
+        NumJArray out = create(a);
+        leakyRelui(a, out, alpha);
+        return out;
+    }
+
+    public static NumJArray leakyRelui(NumJArray a, NumJArray dest, float alpha) {
+        return activationKernel(a, dest, ACT_LEAKY, alpha);
+    }
+
+    public static NumJArray leakyReluD(NumJArray a, float alpha) {
+        NumJArray out = create(a);
+        leakyReluDi(a, out, alpha);
+        return out;
+    }
+
+    public static NumJArray leakyReluDi(
+            NumJArray a, NumJArray dest, float alpha) {
+        return activationKernel(a, dest, ACT_LEAKY_D, alpha);
+    }
+
+    public static NumJArray sigmoid(NumJArray a) {
+        NumJArray out = create(a);
+        sigmoidi(a, out);
+        return out;
+    }
+
+    public static NumJArray sigmoidi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_SIGMOID, 0f);
+    }
+
+    public static NumJArray sigmoidD(NumJArray a) {
+        NumJArray out = create(a);
+        sigmoidDi(a, out);
+        return out;
+    }
+
+    public static NumJArray sigmoidDi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_SIGMOID_D, 0f);
+    }
+
+    public static NumJArray tanh(NumJArray a) {
+        NumJArray out = create(a);
+        tanhi(a, out);
+        return out;
+    }
+
+    public static NumJArray tanhi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_TANH, 0f);
+    }
+
+    public static NumJArray tanhD(NumJArray a) {
+        NumJArray out = create(a);
+        tanhDi(a, out);
+        return out;
+    }
+
+    public static NumJArray tanhDi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_TANH_D, 0f);
+    }
+
+    public static NumJArray elu(NumJArray a, float alpha) {
+        NumJArray out = create(a);
+        elui(a, out, alpha);
+        return out;
+    }
+
+    public static NumJArray elui(
+            NumJArray a, NumJArray dest, float alpha) {
+        return activationKernel(a, dest, ACT_ELU, alpha);
+    }
+
+    public static NumJArray eluD(NumJArray a, float alpha) {
+        NumJArray out = create(a);
+        eluDi(a, out, alpha);
+        return out;
+    }
+
+    public static NumJArray eluDi(
+            NumJArray a, NumJArray dest, float alpha) {
+        return activationKernel(a, dest, ACT_ELU_D, alpha);
+    }
+
+    public static NumJArray softplus(NumJArray a) {
+        NumJArray out = create(a);
+        softplusi(a, out);
+        return out;
+    }
+
+    public static NumJArray softplusi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_SOFTPLUS, 0f);
+    }
+
+    public static NumJArray softplusD(NumJArray a) {
+        NumJArray out = create(a);
+        softplusDi(a, out);
+        return out;
+    }
+
+    public static NumJArray softplusDi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_SOFTPLUS_D, 0f);
+    }
+
+    public static NumJArray silu(NumJArray a) {
+        NumJArray out = create(a);
+        silui(a, out);
+        return out;
+    }
+
+    public static NumJArray silui(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_SILU, 0f);
+    }
+
+    public static NumJArray siluD(NumJArray a) {
+        NumJArray out = create(a);
+        siluDi(a, out);
+        return out;
+    }
+
+    public static NumJArray siluDi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_SILU_D, 0f);
+    }
+
+    public static NumJArray gelu(NumJArray a) {
+        NumJArray out = create(a);
+        gelui(a, out);
+        return out;
+    }
+
+    public static NumJArray gelui(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_GELU, 0f);
+    }
+
+    public static NumJArray geluD(NumJArray a) {
+        NumJArray out = create(a);
+        geluDi(a, out);
+        return out;
+    }
+
+    public static NumJArray geluDi(NumJArray a, NumJArray dest) {
+        return activationKernel(a, dest, ACT_GELU_D, 0f);
+    }
+
+
+    private static NumJArray activationKernel(NumJArray a, NumJArray dest, int operation, float alpha) {
+
+        if (strided(a, dest)) {
+            return viaTemp(a, dest,
+                    (src, dst) -> activationKernel(
+                            src, dst, operation, alpha));
+        }
+
+        check(a, dest);
+
+        float[] src = a.data;
+        float[] dst = dest.data;
+
+        int so = a.offset;
+        int d = dest.offset;
+        int n = a.size;
+
+        checkBounds(src, so, dst, d, n);
+
+        int i = 0;
+        int bound = SPECIES.loopBound(n);
+
+        FloatVector zero = FloatVector.zero(SPECIES);
+        FloatVector one = FloatVector.broadcast(SPECIES, 1f);
+        FloatVector half = FloatVector.broadcast(SPECIES, 0.5f);
+        FloatVector alphaV = FloatVector.broadcast(SPECIES, alpha);
+
+        for (; i < bound; i += SPECIES.length()) {
+
+            FloatVector x = FloatVector.fromArray(
+                    SPECIES, src, so + i);
+
+            FloatVector result;
+
+            switch (operation) {
+
+                case ACT_RELU -> {
+                    result = x.max(zero);
+                }
+
+                case ACT_RELU_D -> {
+                    result = zero.blend(
+                    one,
+                    x.compare(VectorOperators.GT, zero));
+                }
+
+                case ACT_LEAKY -> {
+                    VectorMask<Float> positive =
+                            x.compare(VectorOperators.GE, zero);
+
+                    result = x.mul(alphaV).blend(x, positive);
+                }
+
+                case ACT_LEAKY_D -> {
+                    VectorMask<Float> positive =
+                            x.compare(VectorOperators.GE, zero);
+
+                    result = alphaV.blend(one, positive);
+                }
+
+                case ACT_SIGMOID -> {
+                    FloatVector e = x.abs().neg().lanewise(VectorOperators.EXP);
+
+                    FloatVector denominator = one.add(e);
+
+                    FloatVector positive = one.div(denominator);
+                    FloatVector negative = e.div(denominator);
+
+                    result = positive.blend(negative, x.compare(VectorOperators.LT, zero));
+                }
+
+                case ACT_SIGMOID_D -> {
+                    FloatVector e = x.abs().neg().lanewise(VectorOperators.EXP);
+
+                    FloatVector denominator = one.add(e);
+
+                    FloatVector s = one.div(denominator).blend(
+                                    e.div(denominator),
+                                    x.compare(VectorOperators.LT, zero));
+
+                    result = s.mul(one.sub(s));
+                }
+
+                case ACT_TANH -> {
+                    result = x.lanewise(VectorOperators.TANH);
+                }
+
+                case ACT_TANH_D -> {
+                    FloatVector t = x.lanewise(VectorOperators.TANH);
+                    result = one.sub(t.mul(t));
+                }
+
+                case ACT_ELU -> {
+                    FloatVector negative = x.lanewise(VectorOperators.EXPM1).mul(alphaV);
+
+                    result = negative.blend(x, x.compare(VectorOperators.GE, zero));
+                }
+
+                case ACT_ELU_D -> {
+                    FloatVector negative = x.lanewise(VectorOperators.EXP).mul(alphaV);
+
+                    result = negative.blend(one, x.compare(VectorOperators.GE, zero));
+                }
+
+                case ACT_SOFTPLUS -> {
+                    FloatVector e = x.abs().neg()
+                            .lanewise(VectorOperators.EXP);
+
+                    result = x.max(zero).add(
+                            e.lanewise(VectorOperators.LOG1P));
+                }
+
+                case ACT_SOFTPLUS_D -> {
+                    FloatVector e = x.abs().neg()
+                            .lanewise(VectorOperators.EXP);
+
+                    FloatVector denominator = one.add(e);
+
+                    result = one.div(denominator)
+                            .blend(
+                                    e.div(denominator),
+                                    x.compare(VectorOperators.LT, zero));
+                }
+
+                case ACT_SILU -> {
+                    FloatVector e = x.abs().neg()
+                            .lanewise(VectorOperators.EXP);
+
+                    FloatVector denominator = one.add(e);
+
+                    FloatVector s = one.div(denominator)
+                            .blend(
+                                    e.div(denominator),
+                                    x.compare(VectorOperators.LT, zero));
+
+                    result = x.mul(s);
+                }
+
+                case ACT_SILU_D -> {
+                    FloatVector e = x.abs().neg()
+                            .lanewise(VectorOperators.EXP);
+
+                    FloatVector denominator = one.add(e);
+
+                    FloatVector s = one.div(denominator)
+                            .blend(
+                                    e.div(denominator),
+                                    x.compare(VectorOperators.LT, zero));
+
+                    result = s.add(x.mul(s).mul(one.sub(s)));
+                }
+
+                case ACT_GELU -> {
+                    FloatVector x2 = x.mul(x);
+                    FloatVector x3 = x2.mul(x);
+
+                    FloatVector inner = x.add(
+                            x3.mul(GELU_K)).mul(GELU_C);
+
+                    FloatVector t = inner.lanewise(
+                            VectorOperators.TANH);
+
+                    result = x.mul(half).mul(one.add(t));
+                }
+
+                case ACT_GELU_D -> {
+                    FloatVector x2 = x.mul(x);
+                    FloatVector x3 = x2.mul(x);
+
+                    FloatVector inner = x.add(
+                            x3.mul(GELU_K)).mul(GELU_C);
+
+                    FloatVector t = inner.lanewise(
+                            VectorOperators.TANH);
+
+                    FloatVector du = one.add(
+                            x2.mul(3f * GELU_K)).mul(GELU_C);
+
+                    result = half.mul(one.add(t)).add(
+                            half.mul(x).mul(
+                                    one.sub(t.mul(t))).mul(du));
+                }
+
+                default -> throw new AssertionError(
+                        "Unknown activation operation: " + operation);
+            }
+
+            result.intoArray(dst, d + i);
+        }
+
+        // Scalar tail
+        for (; i < n; i++) {
+            dst[d + i] = activationScalar(
+                    src[so + i], operation, alpha);
+        }
+
+        return dest;
+    }
+
+    private static float activationScalar(
+            float x, int operation, float alpha) {
+
+        return switch (operation) {
+
+            case ACT_RELU ->
+                    Math.max(0f, x);
+
+            case ACT_RELU_D ->
+                    x > 0f ? 1f : 0f;
+
+            case ACT_LEAKY ->
+                    x >= 0f ? x : alpha * x;
+
+            case ACT_LEAKY_D ->
+                    x >= 0f ? 1f : alpha;
+
+            case ACT_SIGMOID -> {
+                if (x >= 0f) {
+                    yield 1f / (1f + (float) Math.exp(-x));
+                }
+
+                float e = (float) Math.exp(x);
+                yield e / (1f + e);
+            }
+
+            case ACT_SIGMOID_D -> {
+                float s;
+                if (x >= 0f) {
+                    s = 1f / (1f + (float) Math.exp(-x));
+                } else {
+                    float e = (float) Math.exp(x);
+                    s = e / (1f + e);
+                }
+                yield s * (1f - s);
+            }
+
+            case ACT_TANH -> (float) Math.tanh(x);
+
+            case ACT_TANH_D -> {
+                float t = (float) Math.tanh(x);
+                yield 1f - t * t;
+            }
+
+            case ACT_ELU ->
+                    x >= 0f ? x : alpha * (float) Math.expm1(x);
+
+            case ACT_ELU_D ->
+                    x >= 0f ? 1f : alpha * (float) Math.exp(x);
+
+            case ACT_SOFTPLUS ->
+                    Math.max(x, 0f)
+                            + (float) Math.log1p(
+                                    Math.exp(-Math.abs(x)));
+
+            case ACT_SOFTPLUS_D -> {
+                if (x >= 0f) {
+                    yield 1f / (1f + (float) Math.exp(-x));
+                }
+                float e = (float) Math.exp(x);
+                yield e / (1f + e);
+            }
+
+            case ACT_SILU -> {
+                float s;
+                if (x >= 0f) {
+                    s = 1f / (1f + (float) Math.exp(-x));
+                } else {
+                    float e = (float) Math.exp(x);
+                    s = e / (1f + e);
+                }
+                yield x * s;
+            }
+
+            case ACT_SILU_D -> {
+                float s;
+                if (x >= 0f) {
+                    s = 1f / (1f + (float) Math.exp(-x));
+                } else {
+                    float e = (float) Math.exp(x);
+                    s = e / (1f + e);
+                }
+                yield s + x * s * (1f - s);
+            }
+
+            case ACT_GELU -> {
+                float x3 = x * x * x;
+                float t = (float) Math.tanh(
+                        GELU_C * (x + GELU_K * x3));
+                yield 0.5f * x * (1f + t);
+            }
+
+            case ACT_GELU_D -> {
+                float x2 = x * x;
+                float x3 = x2 * x;
+
+                float u = GELU_C * (x + GELU_K * x3);
+                float t = (float) Math.tanh(u);
+
+                float du = GELU_C * (1f + 3f * GELU_K * x2);
+
+                yield 0.5f * (1f + t)
+                        + 0.5f * x * (1f - t * t) * du;
+            }
+
+            default -> throw new AssertionError(
+                    "Unknown activation operation: " + operation);
+        };
+    }
+
 }

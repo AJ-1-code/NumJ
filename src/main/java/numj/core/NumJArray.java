@@ -1,6 +1,8 @@
 package numj.core;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.function.BiFunction;
+import java.util.function.IntToDoubleFunction;
 
 import numj.io.njio;
 import numj.io.npio;
@@ -13,6 +15,7 @@ import numj.math.sorts;
 import numj.math.stat;
 import numj.math.trig;
 import numj.ml.activation;
+import numj.ml.loss;
 
 /**
  * A small, NumPy-style N-dimensional array of {@code float}s.
@@ -189,6 +192,10 @@ public class NumJArray {
         data[getFlatIndex(indices)] = value;
     }
 
+    public static void setSeed(long seed) {
+        creation.setSeed(seed);
+    }
+
     /**
      * Creates an array of zeros.
      *
@@ -321,6 +328,10 @@ public class NumJArray {
         return creation.normal(mean, stdDev, shape);
     }
 
+    public static NumJArray normal(Random rng, float mean, float stdDev, int... shape) {
+        return creation.normal(rng, mean, stdDev, shape);
+    }
+
     /**
      * Creates an array of uniformly distributed random numbers in {@code [low, high)}.
      *
@@ -332,6 +343,20 @@ public class NumJArray {
      */
     public static NumJArray uniform(float low, float high, int... shape) {
         return creation.uniform(low, high, shape);
+    }
+
+    public static NumJArray uniform(Random rng, float low, float high, int... shape) {
+        return creation.uniform(rng, low, high, shape);
+    }
+
+    /** Uniform random numbers in {@code [0, 1)}, like {@code np.random.rand}. */
+    public static NumJArray rand(int... shape) {
+        return creation.uniform(creation.getSeed(), 0.0f, 1.0f, shape);
+    }
+ 
+    /** Uniform random numbers in {@code [0, 1)} from the given generator. */
+    public static NumJArray rand(Random rng, int... shape) {
+        return uniform(rng, 0f, 1f, shape);
     }
 
      /**
@@ -368,6 +393,46 @@ public class NumJArray {
      */
     public static NumJArray eye(int n, int m, int k) {
         return creation.eye(n, m, k);
+    }
+
+    public static NumJArray logspace(float start, float stop, int num, float base) {
+        return creation.logspace(start, stop, num, base);
+    }
+
+    public static NumJArray fromFunction(IntToDoubleFunction func, int... shape){
+        return creation.fromFunction(func, shape);
+    }
+
+    public static NumJArray randn( int... shape) {
+        return creation.normal(creation.getSeed(), 0.0f, 1.0f, shape);
+    }
+
+    public static NumJArray randn(Random rng, int... shape) {
+        return creation.normal(rng, 0.0f, 1.0f, shape);
+    }
+
+    public static NumJArray randint(int low, int high, int... shape) {
+        return creation.randint(low, high, shape);
+    }
+
+    public static NumJArray randint(Random rng, int low, int high, int... shape) {
+        return creation.randint(rng, low, high, shape);
+    }
+
+    public static NumJArray bernoulli(Random rng, float p, int... shape) {
+        return creation.bernoulli(rng, p, shape);
+    }
+    
+    public static NumJArray bernoulli(float p, int... shape) {
+        return creation.bernoulli(creation.getSeed(), p, shape);
+    }
+
+    public static NumJArray permutation(int n) {
+        return creation.permutation(n);
+    }
+
+    public static NumJArray permutation(Random rng, int n) {
+        return creation.permutation(rng, n);
     }
 
     /**
@@ -1362,6 +1427,15 @@ public class NumJArray {
     }
 
     /**
+     * ReLU activation applied in-place: {@code max(0, x)} for every element.
+     *
+     * @return this array
+     */
+    public NumJArray relui() {
+        return activation.relui(this);
+    }
+
+    /**
      * Derivative of ReLU: 1 where {@code x > 0}, otherwise 0.
      *
      * @return a new array of 0s and 1s (input is the pre-activation value)
@@ -1377,6 +1451,15 @@ public class NumJArray {
      */
     public NumJArray sigmoid() {
         return activation.sigmoid(this);
+    }
+
+    /**
+     * Sigmoid activation applied in-place.
+     *
+     * @return this array
+     */
+    public NumJArray sigmoidi() {
+        return activation.sigmoidi(this);
     }
 
     /**
@@ -1398,12 +1481,131 @@ public class NumJArray {
     }
 
     /**
+     * Tanh activation applied in-place.
+     *
+     * @return this array
+     */
+    public NumJArray tanhActivationi() {
+        return activation.tanhi(this);
+    }
+
+    /**
      * Derivative of tanh, {@code 1 - tanh(x)^2}.
      *
      * @return a new array (input is the pre-activation value, not the tanh output)
      */
     public NumJArray tanhD() {
         return activation.tanhD(this);
+    }
+
+    /**
+     * ELU activation applied to every element.
+     *
+     * @param alpha the ELU alpha parameter
+     * @return a new array of the same shape
+     */
+    public NumJArray elu(float alpha) {
+        return activation.elu(this, alpha);
+    }
+
+    /**
+     * ELU activation applied in-place.
+     *
+     * @param alpha the ELU alpha parameter
+     * @return this array
+     */
+    public NumJArray elui(float alpha) {
+        return activation.elui(this, alpha);
+    }
+
+    /**
+     * Derivative of ELU.
+     *
+     * @param alpha the ELU alpha parameter
+     * @return a new array (input is the pre-activation value, not the ELU output)
+     */
+    public NumJArray eluD(float alpha) {
+        return activation.eluD(this, alpha);
+    }
+
+    /**
+     * GELU activation applied to every element.
+     * @return a new array of the same shape
+     */
+    public NumJArray gelu() {
+        return activation.gelu(this);
+    }
+
+    /**
+     * GELU activation applied to every element in-place.
+     *
+     * @return this array
+     */
+    public NumJArray gelui() {
+        return activation.gelui(this);
+    }
+
+    /**
+     * Derivative of GELU.
+     *
+     * @return a new array (input is the pre-activation value, not the GELU output)
+     */
+    public NumJArray geluD() {
+        return activation.geluD(this);
+    }
+
+    /**
+     * SILU activation applied to every element.
+     *
+     * @return a new array of the same shape
+     */
+    public NumJArray silu() {
+        return activation.silu(this);
+    }
+
+    /**
+     * SILU activation applied to every element in-place.
+     *
+     * @return this array
+     */
+    public NumJArray silui() {
+        return activation.silui(this);
+    }
+
+    /**
+     * Derivative of SILU.
+     *
+     * @return a new array (input is the pre-activation value, not the SILU output)
+     */
+    public NumJArray siluD() {
+        return activation.siluD(this);
+    }
+
+    /**
+     * SoftPlus activation applied to every element.
+     *
+     * @return a new array of the same shape
+     */
+    public NumJArray softplus() {
+        return activation.softplus(this);
+    }
+
+    /**
+     * SoftPlus activation applied to every element in-place.
+     *
+     * @return this array
+     */
+    public NumJArray softplusi() {
+        return activation.softplusi(this);
+    }
+
+    /**
+     * Derivative of SoftPlus.
+     *
+     * @return a new array (input is the pre-activation value, not the SoftPlus output)
+     */
+    public NumJArray softplusD() {
+        return activation.softplusD(this);
     }
 
     /**
@@ -1425,6 +1627,58 @@ public class NumJArray {
      */
     public NumJArray softmaxAxis(int axis) {
         return activation.softmaxAxis(this, axis);
+    }
+
+    public float mse(NumJArray b) {
+        return loss.mse(this, b);
+    }
+
+    public NumJArray mseD(NumJArray b) {
+        return loss.mseD(this, b);
+    }
+
+    public float mae(NumJArray b) {
+        return loss.mae(this, b);
+    }
+
+    public NumJArray maeD(NumJArray b) {
+        return loss.maeD(this, b);
+    }
+
+    public float huber(NumJArray b) {
+        return loss.huber(this, b, 1.0f);
+    }
+
+    public NumJArray huberD(NumJArray b) {
+        return loss.huberD(this, b, 1.0f);
+    }
+
+    public float bce(NumJArray b) {
+        return loss.bce(this, b);
+    }
+
+    public NumJArray bceD(NumJArray b) {
+        return loss.bceD(this, b);
+    }
+
+    public float bcel(NumJArray b) {
+        return loss.bcel(this, b);
+    }
+
+    public NumJArray bcelD(NumJArray b) {
+        return loss.bcelD(this, b);
+    }
+
+    public float cce(NumJArray b) {
+        return loss.cce(this, b);
+    }
+
+    public float smce(NumJArray b) {
+        return loss.smce(this, b);
+    }
+
+    public NumJArray smceD(NumJArray b) {
+        return loss.smceD(this, b);
     }
 
     /**

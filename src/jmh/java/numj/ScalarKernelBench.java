@@ -62,22 +62,19 @@ public class ScalarKernelBench {
         return a.add(SCALAR);
     }
 
-
-    // Original scalar in-place addition
     @Benchmark
     public NumJArray originalAddInto() {
-    
+
         float[] data = a.data;
         int offset = a.offset;
-    
+
         for (int i = 0; i < size; i++) {
             data[offset + i] += SCALAR;
         }
-    
+
         return a;
     }
-    
-    // SIMD in-place addition
+
     @Benchmark
     public NumJArray simdAddInto() {
         return a.addi(SCALAR);

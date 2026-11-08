@@ -34,74 +34,6 @@ public class arithmatic {
         return a;
     }
 
-    // public static NumJArray abs(NumJArray a) {
-    //     return map(a, Math::abs);
-    // }
-
-    // public static NumJArray neg(NumJArray a) {
-    //     return map(a, x -> -x);
-    // }
-
-    // public static NumJArray sqrt(NumJArray a) {
-    //     return map(a, x -> (float) Math.sqrt(x));
-    // }
-
-    // public static NumJArray pow(NumJArray a, float power) {
-    //     return map(a, x -> (float) Math.pow(x, power));
-    // }
-
-    // public static NumJArray exp(NumJArray a) {
-    //     return map(a, x -> (float) Math.exp(x));
-    // }
-
-    // public static NumJArray log(NumJArray a) {
-    //     return map(a, x -> (float) Math.log(x));
-    // }
-
-    // public static NumJArray floor(NumJArray a) {
-    //     return map(a, x -> (float) Math.floor(x));
-    // }
-
-    // public static NumJArray ceil(NumJArray a) {
-    //     return map(a, x -> (float) Math.ceil(x));
-    // }
-
-    // public static NumJArray round(NumJArray a) {
-    //     return map(a, x -> (float) Math.rint(x));
-    // }
-
-    // public static NumJArray sign(NumJArray a) {
-    //     return map(a, Math::signum);
-    // }
-
-    // public static NumJArray sin(NumJArray a) {
-    //     return map(a, x -> (float) Math.sin(x));
-    // }
-
-    // public static NumJArray cos(NumJArray a) {
-    //     return map(a, x -> (float) Math.cos(x));
-    // }
-
-    // public static NumJArray tan(NumJArray a) {
-    //     return map(a, x -> (float) Math.tan(x));
-    // }
-
-    // public static NumJArray asin(NumJArray a) {
-    //     return map(a, x -> (float) Math.asin(x));
-    // }
-
-    // public static NumJArray acos(NumJArray a) {
-    //     return map(a, x -> (float) Math.acos(x));
-    // }
-
-    // public static NumJArray atan(NumJArray a) {
-    //     return map(a, x -> (float) Math.atan(x));
-    // }
-
-    // public static NumJArray atan2(NumJArray y, NumJArray x) {
-    //     return elementwise(y, x, (a, b) -> (float) Math.atan2(a, b));
-    // }
-
     public static NumJArray add(NumJArray a, float b) {
         return KernelScalars.add(a, b);
     }
@@ -293,31 +225,6 @@ public class arithmatic {
         return KernelScalars.modi(a, dest, b);
     }
 
-
-    // public static NumJArray sub(NumJArray a, float b) {
-    //     return map(a, x -> x - b);
-    // }
-
-    // public static NumJArray mul(NumJArray a, float b) {
-    //     return map(a, x -> x * b);
-    // }
-
-    // public static NumJArray div(NumJArray a, float b) {
-    //     return map(a, x -> x / b);
-    // }
-
-    // public static NumJArray clip(NumJArray a, float min, float max) {
-    //     if (min > max) {
-    //         throw new IllegalArgumentException("min must be <= max");
-    //     }
-    //     return map(a, x -> Math.max(min, Math.min(max, x)));
-    // }
-
-    // public static NumJArray mod(NumJArray a, float b) {
-    //     return map(a, x -> {float r = x % b;return (r != 0 && (r < 0) != (b < 0)) ? r + b : r;});
-    // }
-
-
     public static NumJArray add(NumJArray a, NumJArray b) {
         return KernelBinary.add(a, b);
     }
@@ -349,22 +256,6 @@ public class arithmatic {
     public static NumJArray divi(NumJArray a, NumJArray b, NumJArray dest) {
         return KernelBinary.divi(a, b, dest);
     }
-
-    // public static NumJArray add(NumJArray a, NumJArray b) {
-    //     return a.broadcastOp(b, (x, y) -> x + y);
-    // }
-
-    // public static NumJArray sub(NumJArray a, NumJArray b) {
-    //     return a.broadcastOp(b, (x, y) -> x - y);
-    // }
-
-    // public static NumJArray mul(NumJArray a, NumJArray b) {
-    //     return a.broadcastOp(b, (x, y) -> x * y);
-    // }
-
-    // public static NumJArray div(NumJArray a, NumJArray b) {
-    //     return a.broadcastOp(b, (x, y) -> x / y);
-    // }
 
     public static float flag(boolean condition) {
         return (float) (condition ? 1.0 : 0.0);
@@ -578,58 +469,6 @@ public class arithmatic {
         }
         return a;
     }
-
-    // public static NumJArray addi(NumJArray a, float b) {
-    //     return elementwisei(a, b, (x, y) -> x + y);
-    // }
-
-    // public static NumJArray addi(NumJArray a, NumJArray b) {
-    //     return elementwisei(a, b, (x, y) -> x + y);
-    // }
-
-    // public static NumJArray subi(NumJArray a, float b) {
-    //     return elementwisei(a, b, (x, y) -> x - y);
-    // }
-
-    // public static NumJArray subi(NumJArray a, NumJArray b) {
-    //     return elementwisei(a, b, (x, y) -> x - y);
-    // }
-
-    // public static NumJArray muli(NumJArray a, float b) {
-    //     return elementwisei(a, b, (x, y) -> x * y);
-    // }
-
-    // public static NumJArray muli(NumJArray a, NumJArray b) {
-    //     return elementwisei(a, b, (x, y) -> x * y);
-    // }
-
-    // public static NumJArray divi(NumJArray a, float b) {
-    //     return elementwisei(a, b, (x, y) -> x / y);
-    // }
-
-    // public static NumJArray divi(NumJArray a, NumJArray b) {
-    //     return elementwisei(a, b, (x, y) -> x / y);
-    // }
-
-    // public static NumJArray sqrti(NumJArray a) {
-    //     return elementwisei(a, x -> (float) Math.sqrt(x));
-    // }
-
-    // public static NumJArray powi(NumJArray a, float b) {
-    //     return elementwisei(a, x -> (float) Math.pow(x, b));
-    // }
-
-    // public static NumJArray expi(NumJArray a) {
-    //     return elementwisei(a, x -> (float) Math.exp(x));
-    // }
-
-    // public static NumJArray logi(NumJArray a) {
-    //     return elementwisei(a, x -> (float) Math.log(x));
-    // }
-
-    // public static NumJArray modi(NumJArray a, float b) {
-    //     return elementwisei(a, x -> x % b);
-    // }
 
     public static NumJArray putWhere(NumJArray array, NumJArray mask, float value) {
         if (mask == null) {

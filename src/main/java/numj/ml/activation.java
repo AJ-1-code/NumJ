@@ -1,143 +1,219 @@
+
 package numj.ml;
 
 import numj.core.NumJArray;
-import numj.math.arithmatic;
-import java.lang.Math;
+import numj.core.KernelScalars;
 
 public class activation {
 
-    /**
-     * Logistic sigmoid of a single number, {@code 1 / (1 + e^-x)}, computed in a numerically stable way.
-     *
-     * @param x the input
-     * @return a value in {@code (0, 1)}
-     */
     public static float sig(float x) {
-        if (x >= 0) {
-            return (float) (1.0f / (1.0f + Math.exp(-x)));
+        if (x >= 0f) {
+            return 1f / (1f + (float) Math.exp(-x));
         }
+
         float e = (float) Math.exp(x);
-        return (float) (e / (1.0f + e));
+        return e / (1f + e);
     }
 
-    /**
-     * Hyperbolic tangent of a single number.
-     *
-     * @param x the input
-     * @return a value in {@code (-1, 1)}
-     */
+    public static float sigmoid(float x) {
+        return sig(x);
+    }
+
     public static float tn(float x) {
         return (float) Math.tanh(x);
     }
 
-    /**
-     * ReLU activation: {@code max(0, x)} for every element.
-     *
-     * @return a new array of the same shape
-     */
+    public static float tanh(float x) {
+        return tn(x);
+    }
+
+    public static float relu(float x) {
+        return Math.max(0f, x);
+    }
+
+    public static float leakyRelu(float x, float alpha) {
+        return x >= 0f ? x : alpha * x;
+    }
+
+    public static float elu(float x, float alpha) {
+        return x >= 0f ? x : alpha * (float) Math.expm1(x);
+    }
+
+    public static float softplus(float x) {
+        return Math.max(x, 0f)
+                + (float) Math.log1p(Math.exp(-Math.abs(x)));
+    }
+
+    public static float silu(float x) {
+        return x * sig(x);
+    }
+
+    public static float gelu(float x) {
+        float x3 = x * x * x;
+        float t = (float) Math.tanh(
+                0.7978845608f * (x + 0.044715f * x3));
+
+        return 0.5f * x * (1f + t);
+    }
+
     public static NumJArray relu(NumJArray array) {
-        return arithmatic.map(array, (float x) -> Math.max(0f, x));
+        return KernelScalars.relu(array);
     }
 
-    /**
-     * Derivative of ReLU: 1 where {@code x > 0}, otherwise 0.
-     *
-     * @return a new array of 0s and 1s (input is the pre-activation value)
-     */
+    public static NumJArray relui(NumJArray array) {
+        return KernelScalars.relui(array, array);
+    }
+
     public static NumJArray reluD(NumJArray array) {
-        return arithmatic.map(array, (float x) -> x > 0f ? 1.0f : 0.0f);
+        return KernelScalars.reluD(array);
     }
 
-    /**
-     * Sigmoid activation applied to every element.
-     *
-     * @return a new array of the same shape with values in {@code (0, 1)}
-     */
+    public static NumJArray leakyRelu(NumJArray array, float alpha) {
+        return KernelScalars.leakyRelu(array, alpha);
+    }
+
+    public static NumJArray leakyRelui(NumJArray array, float alpha) {
+        return KernelScalars.leakyRelui(array, array, alpha);
+    }
+
+    public static NumJArray leakyReluD(
+            NumJArray array, float alpha) {
+        return KernelScalars.leakyReluD(array, alpha);
+    }
+
     public static NumJArray sigmoid(NumJArray array) {
-        return arithmatic.map(array, activation::sig);
+        return KernelScalars.sigmoid(array);
     }
 
-    /**
-     * Derivative of sigmoid, {@code s * (1 - s)} where {@code s = sigmoid(x)}.
-     *
-     * @return a new array (input is the pre-activation value, not the sigmoid output)
-     */
+    public static NumJArray sigmoidi(NumJArray array) {
+        return KernelScalars.sigmoidi(array, array);
+    }
+
     public static NumJArray sigmoidD(NumJArray array) {
-        return arithmatic.map(array, (float x) -> {
-            float s = sig(x);
-            return s * (1.0f - s);
-        });
+        return KernelScalars.sigmoidD(array);
     }
 
-    /**
-     * Tanh activation applied to every element.
-     *
-     * @return a new array of the same shape with values in {@code (-1, 1)}
-     */
     public static NumJArray tanh(NumJArray array) {
-        return arithmatic.map(array, (float x) -> (float) Math.tanh(x));
+        return KernelScalars.tanh(array);
     }
 
-    /**
-     * Derivative of tanh, {@code 1 - tanh(x)^2}.
-     *
-     * @return a new array (input is the pre-activation value, not the tanh output)
-     */
+    public static NumJArray tanhi(NumJArray array) {
+        return KernelScalars.tanhi(array, array);
+    }
+
     public static NumJArray tanhD(NumJArray array) {
-        return arithmatic.map(array, (float x) -> {
-            float t = (float) Math.tanh(x);
-            return 1.0f - t * t;
-        });
+        return KernelScalars.tanhD(array);
     }
 
-    /**
-     * Softmax over all elements (they sum to 1 afterwards). Stable against overflow.
-     *
-     * @return a new array of the same shape
-     */
+    public static NumJArray elu(NumJArray array, float alpha) {
+        return KernelScalars.elu(array, alpha);
+    }
+
+    public static NumJArray elui(NumJArray array, float alpha) {
+        return KernelScalars.elui(array, array, alpha);
+    }
+
+    public static NumJArray eluD(
+            NumJArray array, float alpha) {
+        return KernelScalars.eluD(array, alpha);
+    }
+
+    public static NumJArray softplus(NumJArray array) {
+        return KernelScalars.softplus(array);
+    }
+
+    public static NumJArray softplusi(NumJArray array) {
+        return KernelScalars.softplusi(array, array);
+    }
+
+    public static NumJArray softplusD(NumJArray array) {
+        return KernelScalars.softplusD(array);
+    }
+
+
+    public static NumJArray silu(NumJArray array) {
+        return KernelScalars.silu(array);
+    }
+
+    public static NumJArray silui(NumJArray array) {
+        return KernelScalars.silui(array, array);
+    }
+
+    public static NumJArray siluD(NumJArray array) {
+        return KernelScalars.siluD(array);
+    }
+
+    public static NumJArray gelu(NumJArray array) {
+        return KernelScalars.gelu(array);
+    }
+
+    public static NumJArray gelui(NumJArray array) {
+        return KernelScalars.gelui(array, array);
+    }
+
+    public static NumJArray geluD(NumJArray array) {
+        return KernelScalars.geluD(array);
+    }
+
     public static NumJArray softmax(NumJArray array) {
         float[] out = array.toContiguousData();
-        if (out.length == 0) return new NumJArray(out, array.shape);
+
+        if (out.length == 0) {
+            return new NumJArray(out, array.shape);
+        }
 
         float max = Float.NEGATIVE_INFINITY;
-        for (float v : out) max = Math.max(max, v);
 
-        float total = 0;
+        for (float v : out) {
+            max = Math.max(max, v);
+        }
+
+        float total = 0f;
+
         for (int i = 0; i < out.length; i++) {
             out[i] = (float) Math.exp(out[i] - max);
             total += out[i];
         }
-        for (int i = 0; i < out.length; i++) out[i] /= total;
+
+        for (int i = 0; i < out.length; i++) {
+            out[i] /= total;
+        }
 
         return new NumJArray(out, array.shape);
     }
 
-    /**
-     * Softmax along one axis, e.g. {@code softmaxAxis(-1)} on a batch of scores gives
-     * per-row probabilities. Stable against overflow.
-     *
-     * @param axis the axis that should sum to 1; negative values count from the end
-     * @return a new array of the same shape
-     * @throws IllegalArgumentException if the axis is out of range
-     */
     public static NumJArray softmaxAxis(NumJArray array, int axis) {
+
         int ax = array.normalizeAxis(axis);
         NumJArray out = array.copy();
+
         int len = out.shape[ax];
         int st = out.strides[ax];
 
         for (int base : out.laneOffsets(ax)) {
-            float max = Float.NEGATIVE_INFINITY;
-            for (int k = 0; k < len; k++) max = Math.max(max, out.data[base + k * st]);
 
-            float total = 0;
+            float max = Float.NEGATIVE_INFINITY;
+
+            for (int k = 0; k < len; k++) {
+                max = Math.max(max, out.data[base + k * st]);
+            }
+
+            float total = 0f;
+
             for (int k = 0; k < len; k++) {
                 int p = base + k * st;
-                out.data[p] = (float) Math.exp(out.data[p] - max);
+
+                out.data[p] = (float) Math.exp(
+                        out.data[p] - max);
+
                 total += out.data[p];
             }
-            for (int k = 0; k < len; k++) out.data[base + k * st] /= total;
+
+            for (int k = 0; k < len; k++) {
+                out.data[base + k * st] /= total;
+            }
         }
+
         return out;
     }
 }

@@ -330,6 +330,14 @@ public class NumJTest {
         check(near(NumJArray.of(0f, 1f).tanh().get(1), Math.tanh(1)), "tanh element-wise");
         check(near(NumJArray.of(0f).tanhD().get(0), 1), "tanhD(0)");
         check(arrayEquals(NumJArray.of(-1f, 0f, 2f).reluD(), 0f, 0f, 1f), "reluD");
+        check(near(NumJArray.of(0f).softplus().get(0), Math.log(2)), "softplus(0)");
+        check(near(NumJArray.of(0f).softplusD().get(0), 0.5), "softplusD(0)");
+        check(near(NumJArray.of(0f).silu().get(0), 0), "silu(0)");
+        check(near(NumJArray.of(0f).siluD().get(0), 0.5), "siluD(0)");
+        check(near(NumJArray.of(0f).gelu().get(0), 0), "gelu(0)");
+        check(near(NumJArray.of(0f).geluD().get(0), 0.5), "geluD(0)");
+        check(near(NumJArray.of(0f).elu(1f).get(0), 0), "elu(0)");
+        check(near(NumJArray.of(0f).eluD(1f).get(0), 1), "eluD(0)");
 
         check(near(c.softmax().sum(), 1), "softmax sums to 1");
         check(!Float.isNaN(NumJArray.of(1000f, 1001f).softmax().get(0)), "softmax stable for large values");
