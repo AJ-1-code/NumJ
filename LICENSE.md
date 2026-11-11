@@ -6,8 +6,12 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-2. Any distributed software that incorporates, uses, or includes code from the NumJ library must include the following acknowledgment in its documentation, credits, About section, or another reasonably accessible location:
+2. Any software, application, game, service, or other product that is publicly distributed, published, or made available to users and generates revenue through its use, distribution, subscriptions, purchases, advertisements, microtransactions, paid access, or other monetization methods, and that incorporates, uses, or depends upon the Software, must include the following acknowledgment in its documentation, credits, About section, or another reasonably accessible location:
 
-"This program includes code using NumJ library"
+"This product uses the NumJ library by FishyBusinessDev."
+
+This requirement applies regardless of whether the Software is distributed as source code, compiled binaries, a dependency, or as part of a larger product.
+
+Private projects and publicly available projects that do not generate revenue are exempt from this acknowledgment requirement.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
